@@ -1,0 +1,2 @@
+# Learning_Equality_Curriculum_Recommendations
+Learning Equality Curriculum Recommendations Competition on Kaggle
