@@ -23,6 +23,25 @@ class Preprocessor:
             -None
         """
         self.df = df
+        self.target_columns = ["title", "description", "text"]
+
+    def cleaning_missing_values(self) -> pd.DataFrame():
+        """
+        The goal of this function is to remove the missing
+        values from the DataFrame to have usable data
+
+        Arguments:
+            None
+
+        Returns:
+            -df: pd.DataFrame: The DataFrame that has just
+            been treated
+        """
+        self.df.title.fillna("No title", inplace=True)
+        self.df.description.fillna("No description", inplace=True)
+        self.df.text.fillna("No text", inplace=True)
+
+        return self.df
 
 
 class Embedding(Preprocessor):
