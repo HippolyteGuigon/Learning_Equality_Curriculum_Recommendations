@@ -1,6 +1,7 @@
 # The goal of this python file is to create an embedding model
 # taking into account the different languages
 import pandas as pd
+import re
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from tqdm import tqdm
@@ -47,6 +48,23 @@ class Preprocessor:
         self.df.text.fillna("-", inplace=True)
 
         return self.df
+
+    def removing_punctuation(self)->pd.DataFrame():
+        """
+        The goal of this function is to remove all punctuations
+        from the textual data within the DataFrame
+        
+        Arguments:
+            -None
+            
+        Returns:
+            -self.df: The DataFrame newly cleaned from punctuation
+        """
+        self.df.title = self.df.title.progress_apply(lambda x: re.sub(r'[^\w\s]', '', x))
+        self.df.description = self.df.description.progress_apply(
+            lambda x: re.sub(r'[^\w\s]', '', x)
+        )
+        #self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
 
     def tokenization(self) -> pd.DataFrame():
         """
