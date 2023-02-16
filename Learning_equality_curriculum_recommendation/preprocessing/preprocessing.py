@@ -2,6 +2,7 @@
 # taking into account the different languages
 import pandas as pd
 from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 from tqdm import tqdm
 
 tqdm.pandas()
@@ -64,7 +65,7 @@ class Preprocessor:
         self.df.description = self.df.description.progress_apply(
             lambda x: word_tokenize(x)
         )
-        self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
+        #self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
 
         return self.df
 
