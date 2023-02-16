@@ -18,7 +18,7 @@ The all project was coded under PEP-8 (https://peps.python.org/pep-0008/) and fl
 
 ## Screenshot 
 
-![alt text](https://github.com/HippolyteGuigon/Hispatologic_Cancer_Detection/blob/master/ressources/metastatic-breast-cancer.jpeg)
+![alt text](https://github.com/HippolyteGuigon/Learning_Equality_Curriculum_Recommendations/blob/features_building_embedding/ressources/Educational_recommendation_system.png)
 
 Recommendation of an educational ressource for a given research
 
