@@ -6,6 +6,10 @@ data/*
 *.ipynb
 *.txt
 
+# Except those files
+
+!requirements.txt
+
 # C extensions
 *.so
 

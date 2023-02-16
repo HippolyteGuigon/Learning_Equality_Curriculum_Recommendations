@@ -1,6 +1,10 @@
 # The goal of this python file is to create an embedding model
 # taking into account the different languages
 import pandas as pd
+from nltk.tokenize import word_tokenize
+from tqdm import tqdm
+
+tqdm.pandas()
 
 
 class Preprocessor:
@@ -37,11 +41,47 @@ class Preprocessor:
             -df: pd.DataFrame: The DataFrame that has just
             been treated
         """
-        self.df.title.fillna("No title", inplace=True)
-        self.df.description.fillna("No description", inplace=True)
-        self.df.text.fillna("No text", inplace=True)
+        self.df.title.fillna("-", inplace=True)
+        self.df.description.fillna("-", inplace=True)
+        self.df.text.fillna("-", inplace=True)
 
         return self.df
+
+    def tokenization(self) -> pd.DataFrame():
+        """
+        The goal of this function is creating tokens
+        from the DataFrame to have tokenized textual
+        data
+
+        Arguments:
+            -None
+
+        Returns:
+            -df: pd.DataFrame: The DataFrame that has just
+            been treated
+        """
+        self.df.title = self.df.title.progress_apply(lambda x: word_tokenize(x))
+        self.df.description = self.df.description.progress_apply(
+            lambda x: word_tokenize(x)
+        )
+        self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
+
+        return self.df
+
+    def removing_stopwords(self) -> pd.DataFrame():
+        """
+        The goal of this function is removing stopword
+        (words useless for the context) in the DataFrame
+        textual data
+
+        Arguments:
+            -None
+
+        Returns:
+            -df: pd.DataFrame: The DataFrame that has just
+            been treated
+        """
+        pass
 
 
 class Embedding(Preprocessor):
