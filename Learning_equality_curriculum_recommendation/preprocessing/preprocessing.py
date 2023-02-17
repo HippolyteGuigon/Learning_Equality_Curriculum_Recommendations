@@ -14,6 +14,7 @@ sys.path.insert(
 from loading import *
 
 tqdm.pandas()
+dict_language = load_file("dict_language.json")
 
 
 class Preprocessor:
@@ -96,21 +97,47 @@ class Preprocessor:
 
         return self.df
 
-    def removing_stopwords(self) -> pd.DataFrame():
+    def removing_stopwords_per_sentence(self, sentence: list, language:str) -> pd.DataFrame():
         """
         The goal of this function is removing stopword
         (words useless for the context) in the DataFrame
         textual data
 
         Arguments:
-            -None
+            -sentence: list: The list of words within the 
+            sentence 
+            -language: str: The language in which the sentence
+            is written
 
         Returns:
-            -df: pd.DataFrame: The DataFrame that has just
-            been treated
+            -sentence: string: The sentence after it was cleaned
+            from the stopwords 
         """
-        dict_language = load_file("dict_language.json")
 
+        if language in dict_language.keys():
+            stop=set(stopwords.words(dict_language[language]))
+            sentence = [x for x in sentence if x not in stop]
+            return sentence
+        else:
+            return sentence
+
+    def remove_stopwords_cleaning(self)->pd.DataFrame():
+        """
+        The goal of this function is to apply, per sentence, 
+        the stopword cleaning in order to have a DataFrame 
+        with exploitable textual data
+        
+        Arguments: 
+            -None
+            
+        Returns:
+            -self.df: pd.DataFrame: The cleaned DataFrame once 
+            the stopwords were removed"""
+        for language in dict_language.keys():
+            self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
+            self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
+
+        return self.df
 
 class Embedding(Preprocessor):
     """
