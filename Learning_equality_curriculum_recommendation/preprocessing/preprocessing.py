@@ -2,9 +2,16 @@
 # taking into account the different languages
 import pandas as pd
 import re
+import sys
+import os
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from tqdm import tqdm
+
+sys.path.insert(
+    0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/loading")
+)
+from loading import *
 
 tqdm.pandas()
 
@@ -49,22 +56,24 @@ class Preprocessor:
 
         return self.df
 
-    def removing_punctuation(self)->pd.DataFrame():
+    def removing_punctuation(self) -> pd.DataFrame():
         """
         The goal of this function is to remove all punctuations
         from the textual data within the DataFrame
-        
+
         Arguments:
             -None
-            
+
         Returns:
             -self.df: The DataFrame newly cleaned from punctuation
         """
-        self.df.title = self.df.title.progress_apply(lambda x: re.sub(r'[^\w\s]', '', x))
-        self.df.description = self.df.description.progress_apply(
-            lambda x: re.sub(r'[^\w\s]', '', x)
+        self.df.title = self.df.title.progress_apply(
+            lambda x: re.sub(r"[^\w\s]", "", x)
         )
-        #self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
+        self.df.description = self.df.description.progress_apply(
+            lambda x: re.sub(r"[^\w\s]", "", x)
+        )
+        # self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
 
     def tokenization(self) -> pd.DataFrame():
         """
@@ -83,7 +92,7 @@ class Preprocessor:
         self.df.description = self.df.description.progress_apply(
             lambda x: word_tokenize(x)
         )
-        #self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
+        # self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
 
         return self.df
 
@@ -100,7 +109,7 @@ class Preprocessor:
             -df: pd.DataFrame: The DataFrame that has just
             been treated
         """
-        pass
+        dict_language = load_file("dict_language.json")
 
 
 class Embedding(Preprocessor):
