@@ -75,7 +75,7 @@ class Preprocessor:
         self.df.description = self.df.description.progress_apply(
             lambda x: re.sub(r"[^\w\s]", "", x)
         )
-        # self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
+        self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
 
     def tokenization(self) -> pd.DataFrame():
         """
@@ -94,7 +94,7 @@ class Preprocessor:
         self.df.description = self.df.description.progress_apply(
             lambda x: word_tokenize(x)
         )
-        # self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
+        self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
 
         return self.df
 
@@ -137,6 +137,7 @@ class Preprocessor:
         for language in tqdm(dict_language.keys()):
             self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
             self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
+            self.df.loc[self.df.language==language,"text"]=self.df.loc[self.df.language==language,"text"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
 
         return self.df
 
@@ -158,6 +159,7 @@ class Preprocessor:
         for language in tqdm(language_list):
             self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
             self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
+            self.df.loc[self.df.language==language,"text"]=self.df.loc[self.df.language==language,"text"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
 
 class Embedding(Preprocessor):
     """
