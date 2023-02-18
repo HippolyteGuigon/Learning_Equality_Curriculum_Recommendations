@@ -4,6 +4,7 @@ import pandas as pd
 import re
 import sys
 import os
+import nltk
 import simplemma
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
@@ -75,7 +76,7 @@ class Preprocessor:
         self.df.description = self.df.description.progress_apply(
             lambda x: re.sub(r"[^\w\s]", "", x)
         )
-        self.df.text = self.df.text.progress_apply(lambda x: word_tokenize(x))
+        self.df.text = self.df.text.progress_apply(lambda x: re.sub(r"[^\w\s]", "", x))
 
     def tokenization(self) -> pd.DataFrame():
         """
@@ -154,12 +155,25 @@ class Preprocessor:
             -self.df: pd.DataFrame: The cleaned DataFrame once 
             lemmatization was applied
         """
-        language_list=self.df.language.unique()
+        language_list=["bg","cs","da","en", "es", "fr", "it", 
+        "pl", "ru", "sw", "tr"]
 
         for language in tqdm(language_list):
             self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
             self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
             self.df.loc[self.df.language==language,"text"]=self.df.loc[self.df.language==language,"text"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
+
+        return self.df
+
+    def stemming(self)->pd.DataFrame():
+        for language in tqdm(dict_language.keys()):
+            try:
+                self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: [nltk.SnowballStemmer(dict_language[language]).stem(token) for token in x])
+                self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: [nltk.SnowballStemmer(dict_language[language]).stem(token) for token in x])
+                self.df.loc[self.df.language==language,"text"]=self.df.loc[self.df.language==language,"text"].apply(lambda x: [nltk.SnowballStemmer(dict_language[language]).stem(token) for token in x])
+            except:
+                pass
+        return self.df
 
 class Embedding(Preprocessor):
     """
