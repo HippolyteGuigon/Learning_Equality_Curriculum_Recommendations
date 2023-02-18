@@ -179,7 +179,40 @@ class Embedding(Preprocessor):
     """
     The goal of this class is to inherit from a preprocessed
     DataFrame with textual information ready to be embedded
+    with different methods (tf_idf, word_2_vec)
     """
 
     def __init__(self, df) -> None:
         self.df = df
+
+    def tf_idf(self)->pd.DataFrame():
+        """
+        The goal of this function is to 
+        embed words with the tf_idf technique
+        and to return vectors from words ready
+        to be used
+
+        Arguments:
+            -None
+
+        Returns:
+            -self.df: pd.DataFrame(): The DataFrame
+            with embedded word vectors ready to be used
+        """
+        pass
+
+    def word_2_vec(self):
+        """
+        The goal of this function is to 
+        embed words with the word_2_vec technique
+        and to return vectors from words ready
+        to be used
+
+        Arguments:
+            -None
+
+        Returns:
+            -self.df: pd.DataFrame(): The DataFrame
+            with embedded word vectors ready to be used
+        """
+        pass
