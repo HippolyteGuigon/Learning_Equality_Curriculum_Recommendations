@@ -4,6 +4,7 @@ import pandas as pd
 import re
 import sys
 import os
+import simplemma
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from tqdm import tqdm
@@ -97,7 +98,7 @@ class Preprocessor:
 
         return self.df
 
-    def removing_stopwords_per_sentence(self, sentence: list, language:str) -> pd.DataFrame():
+    def removing_stopwords_per_sentence(self, sentence: list, language:str) -> str:
         """
         The goal of this function is removing stopword
         (words useless for the context) in the DataFrame
@@ -133,11 +134,30 @@ class Preprocessor:
         Returns:
             -self.df: pd.DataFrame: The cleaned DataFrame once 
             the stopwords were removed"""
-        for language in dict_language.keys():
+        for language in tqdm(dict_language.keys()):
             self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
             self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
 
         return self.df
+
+    def lemmatization(self)->pd.DataFrame():
+        """
+        The goal of this function is to apply, per sentence, 
+        the lemmatization cleaning in order to have a DataFrame 
+        with exploitable textual data
+        
+        Arguments: 
+            -None
+            
+        Returns:
+            -self.df: pd.DataFrame: The cleaned DataFrame once 
+            lemmatization was applied
+        """
+        language_list=self.df.language.unique()
+
+        for language in tqdm(language_list):
+            self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
+            self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
 
 class Embedding(Preprocessor):
     """
