@@ -239,7 +239,6 @@ class Embedding(Preprocessor):
             hidden_states = outputs[2]
             word_embeddings = hidden_states[-1][0]
             return word_embeddings
-        print("OKKKKKKK")
         self.df.title=self.df.title.progress_apply(lambda x: bert_tokenizer(x))
         self.df.description=self.df.description.progress_apply(lambda x: bert_tokenizer(x))
 
