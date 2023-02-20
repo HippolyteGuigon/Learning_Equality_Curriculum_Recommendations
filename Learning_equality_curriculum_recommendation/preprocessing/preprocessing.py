@@ -179,6 +179,29 @@ class Preprocessor:
                 pass
         return self.df
 
+    def overall_preprocessing(self)->pd.DataFrame:
+        """
+        The goal of this function is to apply the all 
+        preprocessing steps of the pipeline to the 
+        entered DataFrame
+        
+        Arguments:
+            -None
+            
+        Returns:
+            -self.df: pd.DataFrame: The DataFrame once 
+            it has been processed 
+        """
+
+        self.df = self.cleaning_missing_values()
+        self.df = self.removing_punctuation()
+        self.df = self.tokenization()
+        self.df = self.remove_stopwords_cleaning()
+        self.df = self.lemmatization()
+        self.df = self.stemming()
+
+        return self.df
+
 class Embedding(Preprocessor):
     """
     The goal of this class is to inherit from a preprocessed

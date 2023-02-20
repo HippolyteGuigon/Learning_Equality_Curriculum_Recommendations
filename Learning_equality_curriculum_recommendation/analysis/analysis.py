@@ -38,5 +38,17 @@ class Dimension_Reduction:
 
         return self.df
 
-    def visualize_pca(self):
-        hero.scatterplot(self.df, col='clean_title_pca', color='language', title="PCA visualisation of language distribution")
+    def visualize_pca(self, column:str ="language")->None:
+        """
+        The goal of this function is to visualize PCA
+        once it has been applied
+        
+        Arguments:
+            -column: str: The column which will be used 
+            as colour 
+
+        Returns: 
+            -None
+        """
+        hero.scatterplot(self.df, col='clean_title_pca', color=column, 
+        title="PCA  visualisation of language distribution")
