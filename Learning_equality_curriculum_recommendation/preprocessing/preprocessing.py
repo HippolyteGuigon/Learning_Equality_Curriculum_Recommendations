@@ -6,9 +6,13 @@ import sys
 import os
 import nltk
 import simplemma
+import torch
+import texthero as hero
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from tqdm import tqdm
+from transformers import BertTokenizer, BertModel
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 sys.path.insert(
     0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/loading")
@@ -26,7 +30,7 @@ class Preprocessor:
     the embedding
     """
 
-    def __init__(self, df: pd.DataFrame()) -> None:
+    def __init__(self, df: pd.DataFrame) -> None:
         """
         The goal of this function is to init the parameters
         of the class
@@ -199,7 +203,12 @@ class Embedding(Preprocessor):
             -self.df: pd.DataFrame(): The DataFrame
             with embedded word vectors ready to be used
         """
-        pass
+        self.df.title=self.df.title.apply(lambda x: " ".join(x))
+        self.df.description=self.df.description.apply(lambda x: " ".join(x))
+        self.df.title = hero.do_tfidf(self.df.title)
+        self.df.description = hero.do_tfidf(self.df.description)
+
+        return self.df
 
     def word_2_vec(self):
         """
@@ -216,3 +225,27 @@ class Embedding(Preprocessor):
             with embedded word vectors ready to be used
         """
         pass
+
+    def bert_embedder(self):
+        model = BertModel.from_pretrained('bert-base-uncased')
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+        def bert_tokenizer(text):
+            tokens = tokenizer.tokenize(text)
+            tokens = ['[CLS]'] + tokens + ['[SEP]']
+            inputs = tokenizer.convert_tokens_to_ids(tokens)
+            inputs = torch.tensor([inputs])
+            outputs = model(inputs)
+            hidden_states = outputs[2]
+            word_embeddings = hidden_states[-1][0]
+            return word_embeddings
+        print("OKKKKKKK")
+        self.df.title=self.df.title.progress_apply(lambda x: bert_tokenizer(x))
+        self.df.description=self.df.description.progress_apply(lambda x: bert_tokenizer(x))
+
+        return self.df
+
+if __name__=="__main__":
+    content=pd.read_csv("data/content.csv")
+    embedder=Embedding(content)
+    embedder.bert_embedder()
