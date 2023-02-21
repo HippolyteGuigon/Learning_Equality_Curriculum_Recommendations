@@ -103,81 +103,155 @@ class Preprocessor:
 
         return self.df
 
-    def removing_stopwords_per_sentence(self, sentence: list, language:str) -> str:
+    def removing_stopwords_per_sentence(self, sentence: list, language: str) -> str:
         """
         The goal of this function is removing stopword
         (words useless for the context) in the DataFrame
         textual data
 
         Arguments:
-            -sentence: list: The list of words within the 
-            sentence 
+            -sentence: list: The list of words within the
+            sentence
             -language: str: The language in which the sentence
             is written
 
         Returns:
             -sentence: string: The sentence after it was cleaned
-            from the stopwords 
+            from the stopwords
         """
 
         if language in dict_language.keys():
-            stop=set(stopwords.words(dict_language[language]))
+            stop = set(stopwords.words(dict_language[language]))
             sentence = [x for x in sentence if x not in stop]
             return sentence
         else:
             return sentence
 
-    def remove_stopwords_cleaning(self)->pd.DataFrame():
+    def remove_stopwords_cleaning(self) -> pd.DataFrame():
         """
-        The goal of this function is to apply, per sentence, 
-        the stopword cleaning in order to have a DataFrame 
+        The goal of this function is to apply, per sentence,
+        the stopword cleaning in order to have a DataFrame
         with exploitable textual data
-        
-        Arguments: 
+
+        Arguments:
             -None
-            
+
         Returns:
-            -self.df: pd.DataFrame: The cleaned DataFrame once 
+            -self.df: pd.DataFrame: The cleaned DataFrame once
             the stopwords were removed"""
         for language in tqdm(dict_language.keys()):
-            self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
-            self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
-            self.df.loc[self.df.language==language,"text"]=self.df.loc[self.df.language==language,"text"].apply(lambda x: self.removing_stopwords_per_sentence(x,language))
+            self.df.loc[self.df.language == language, "title"] = self.df.loc[
+                self.df.language == language, "title"
+            ].apply(lambda x: self.removing_stopwords_per_sentence(x, language))
+            self.df.loc[self.df.language == language, "description"] = self.df.loc[
+                self.df.language == language, "description"
+            ].apply(lambda x: self.removing_stopwords_per_sentence(x, language))
+            self.df.loc[self.df.language == language, "text"] = self.df.loc[
+                self.df.language == language, "text"
+            ].apply(lambda x: self.removing_stopwords_per_sentence(x, language))
 
         return self.df
 
-    def lemmatization(self)->pd.DataFrame():
+    def lemmatization(self) -> pd.DataFrame():
         """
-        The goal of this function is to apply, per sentence, 
-        the lemmatization cleaning in order to have a DataFrame 
+        The goal of this function is to apply, per sentence,
+        the lemmatization cleaning in order to have a DataFrame
         with exploitable textual data
-        
-        Arguments: 
+
+        Arguments:
             -None
-            
+
         Returns:
-            -self.df: pd.DataFrame: The cleaned DataFrame once 
+            -self.df: pd.DataFrame: The cleaned DataFrame once
             lemmatization was applied
         """
-        language_list=["bg","cs","da","en", "es", "fr", "it", 
-        "pl", "ru", "sw", "tr"]
+        language_list = [
+            "bg",
+            "cs",
+            "da",
+            "en",
+            "es",
+            "fr",
+            "it",
+            "pl",
+            "ru",
+            "sw",
+            "tr",
+        ]
 
         for language in tqdm(language_list):
-            self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
-            self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
-            self.df.loc[self.df.language==language,"text"]=self.df.loc[self.df.language==language,"text"].apply(lambda x: [simplemma.lemmatize(token, lang=language) for token in x])
+            self.df.loc[self.df.language == language, "title"] = self.df.loc[
+                self.df.language == language, "title"
+            ].apply(
+                lambda x: [simplemma.lemmatize(token, lang=language) for token in x]
+            )
+            self.df.loc[self.df.language == language, "description"] = self.df.loc[
+                self.df.language == language, "description"
+            ].apply(
+                lambda x: [simplemma.lemmatize(token, lang=language) for token in x]
+            )
+            self.df.loc[self.df.language == language, "text"] = self.df.loc[
+                self.df.language == language, "text"
+            ].apply(
+                lambda x: [simplemma.lemmatize(token, lang=language) for token in x]
+            )
 
         return self.df
 
-    def stemming(self)->pd.DataFrame():
+    def stemming(self) -> pd.DataFrame():
         for language in tqdm(dict_language.keys()):
             try:
-                self.df.loc[self.df.language==language,"title"]=self.df.loc[self.df.language==language,"title"].apply(lambda x: [nltk.SnowballStemmer(dict_language[language]).stem(token) for token in x])
-                self.df.loc[self.df.language==language,"description"]=self.df.loc[self.df.language==language,"description"].apply(lambda x: [nltk.SnowballStemmer(dict_language[language]).stem(token) for token in x])
-                self.df.loc[self.df.language==language,"text"]=self.df.loc[self.df.language==language,"text"].apply(lambda x: [nltk.SnowballStemmer(dict_language[language]).stem(token) for token in x])
+                self.df.loc[self.df.language == language, "title"] = self.df.loc[
+                    self.df.language == language, "title"
+                ].apply(
+                    lambda x: [
+                        nltk.SnowballStemmer(dict_language[language]).stem(token)
+                        for token in x
+                    ]
+                )
+                self.df.loc[self.df.language == language, "description"] = self.df.loc[
+                    self.df.language == language, "description"
+                ].apply(
+                    lambda x: [
+                        nltk.SnowballStemmer(dict_language[language]).stem(token)
+                        for token in x
+                    ]
+                )
+                self.df.loc[self.df.language == language, "text"] = self.df.loc[
+                    self.df.language == language, "text"
+                ].apply(
+                    lambda x: [
+                        nltk.SnowballStemmer(dict_language[language]).stem(token)
+                        for token in x
+                    ]
+                )
             except:
                 pass
         return self.df
+
+    def overall_preprocessing(self) -> pd.DataFrame:
+        """
+        The goal of this function is to apply the all
+        preprocessing steps of the pipeline to the
+        entered DataFrame
+
+        Arguments:
+            -None
+
+        Returns:
+            -self.df: pd.DataFrame: The DataFrame once
+            it has been processed
+        """
+
+        self.df = self.cleaning_missing_values()
+        self.df = self.removing_punctuation()
+        self.df = self.tokenization()
+        self.df = self.remove_stopwords_cleaning()
+        self.df = self.lemmatization()
+        self.df = self.stemming()
+
+        return self.df
+
 
 class Embedding(Preprocessor):
     """
@@ -189,9 +263,9 @@ class Embedding(Preprocessor):
     def __init__(self, df) -> None:
         self.df = df
 
-    def tf_idf(self)->pd.DataFrame():
+    def tf_idf(self) -> pd.DataFrame():
         """
-        The goal of this function is to 
+        The goal of this function is to
         embed words with the tf_idf technique
         and to return vectors from words ready
         to be used
@@ -203,8 +277,8 @@ class Embedding(Preprocessor):
             -self.df: pd.DataFrame(): The DataFrame
             with embedded word vectors ready to be used
         """
-        self.df.title=self.df.title.apply(lambda x: " ".join(x))
-        self.df.description=self.df.description.apply(lambda x: " ".join(x))
+        self.df.title = self.df.title.apply(lambda x: " ".join(x))
+        self.df.description = self.df.description.apply(lambda x: " ".join(x))
         self.df.title = hero.do_tfidf(self.df.title)
         self.df.description = hero.do_tfidf(self.df.description)
 
@@ -212,7 +286,7 @@ class Embedding(Preprocessor):
 
     def word_2_vec(self):
         """
-        The goal of this function is to 
+        The goal of this function is to
         embed words with the word_2_vec technique
         and to return vectors from words ready
         to be used
@@ -227,25 +301,28 @@ class Embedding(Preprocessor):
         pass
 
     def bert_embedder(self):
-        model = BertModel.from_pretrained('bert-base-uncased')
-        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        model = BertModel.from_pretrained("bert-base-uncased")
+        tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
         def bert_tokenizer(text):
             tokens = tokenizer.tokenize(text)
-            tokens = ['[CLS]'] + tokens + ['[SEP]']
+            tokens = ["[CLS]"] + tokens + ["[SEP]"]
             inputs = tokenizer.convert_tokens_to_ids(tokens)
             inputs = torch.tensor([inputs])
             outputs = model(inputs)
             hidden_states = outputs[2]
             word_embeddings = hidden_states[-1][0]
             return word_embeddings
-        print("OKKKKKKK")
-        self.df.title=self.df.title.progress_apply(lambda x: bert_tokenizer(x))
-        self.df.description=self.df.description.progress_apply(lambda x: bert_tokenizer(x))
+
+        self.df.title = self.df.title.progress_apply(lambda x: bert_tokenizer(x))
+        self.df.description = self.df.description.progress_apply(
+            lambda x: bert_tokenizer(x)
+        )
 
         return self.df
 
-if __name__=="__main__":
-    content=pd.read_csv("data/content.csv")
-    embedder=Embedding(content)
+
+if __name__ == "__main__":
+    content = pd.read_csv("data/content.csv")
+    embedder = Embedding(content)
     embedder.bert_embedder()
