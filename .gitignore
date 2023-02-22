@@ -5,6 +5,8 @@ __pycache__/
 data/*
 *.ipynb
 *.txt
+*.csv
+.DS_Store
 
 # Except those files
 
