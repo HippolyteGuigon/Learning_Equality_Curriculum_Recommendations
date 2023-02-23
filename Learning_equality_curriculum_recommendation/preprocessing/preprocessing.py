@@ -12,12 +12,19 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from tqdm import tqdm
 from transformers import BertTokenizer, BertModel
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 sys.path.insert(
     0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/loading")
 )
+
+sys.path.insert(
+    0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/logs")
+)
+
 from loading import *
+from logs import *
+
+main()
 
 tqdm.pandas()
 dict_language = load_file("dict_language.json")
@@ -44,6 +51,7 @@ class Preprocessor:
         """
         self.df = df
         self.target_columns = ["title", "description", "text"]
+        logging.info("The user has launched the preprocessing")
 
     def cleaning_missing_values(self) -> pd.DataFrame():
         """
@@ -57,6 +65,7 @@ class Preprocessor:
             -df: pd.DataFrame: The DataFrame that has just
             been treated
         """
+        logging.info("Cleaning missing values...")
         self.df.title.fillna("-", inplace=True)
         self.df.description.fillna("-", inplace=True)
         self.df.text.fillna("-", inplace=True)
@@ -74,6 +83,7 @@ class Preprocessor:
         Returns:
             -self.df: The DataFrame newly cleaned from punctuation
         """
+        logging.info("Removing punctuations...")
         self.df.title = self.df.title.progress_apply(
             lambda x: re.sub(r"[^\w\s]", "", x)
         )
@@ -95,6 +105,7 @@ class Preprocessor:
             -df: pd.DataFrame: The DataFrame that has just
             been treated
         """
+        logging.info("Tokenization in progress...")
         self.df.title = self.df.title.progress_apply(lambda x: word_tokenize(x))
         self.df.description = self.df.description.progress_apply(
             lambda x: word_tokenize(x)
@@ -138,7 +149,10 @@ class Preprocessor:
 
         Returns:
             -self.df: pd.DataFrame: The cleaned DataFrame once
-            the stopwords were removed"""
+            the stopwords were removed
+        """
+        logging.info("Removing stopwords...")
+
         for language in tqdm(dict_language.keys()):
             self.df.loc[self.df.language == language, "title"] = self.df.loc[
                 self.df.language == language, "title"
@@ -165,6 +179,8 @@ class Preprocessor:
             -self.df: pd.DataFrame: The cleaned DataFrame once
             lemmatization was applied
         """
+
+        logging.info("Lemmatization in progress...")
         language_list = [
             "bg",
             "cs",
@@ -199,6 +215,8 @@ class Preprocessor:
         return self.df
 
     def stemming(self) -> pd.DataFrame():
+
+        logging.info("Stemming in progress...")
         for language in tqdm(dict_language.keys()):
             try:
                 self.df.loc[self.df.language == language, "title"] = self.df.loc[
@@ -250,6 +268,7 @@ class Preprocessor:
         self.df = self.lemmatization()
         self.df = self.stemming()
 
+        logging.warning("The preprocessing is over")
         return self.df
 
 
@@ -262,6 +281,7 @@ class Embedding(Preprocessor):
 
     def __init__(self, df) -> None:
         self.df = df
+        logging.info("The embedding has been launched by the user")
 
     def tf_idf(self) -> pd.DataFrame():
         """
@@ -277,6 +297,8 @@ class Embedding(Preprocessor):
             -self.df: pd.DataFrame(): The DataFrame
             with embedded word vectors ready to be used
         """
+
+        logging.info("The TF-IDF embedding has been chosen and performing")
         self.df.title = self.df.title.apply(lambda x: " ".join(x))
         self.df.description = self.df.description.apply(lambda x: " ".join(x))
         self.df.title = hero.do_tfidf(self.df.title)
@@ -298,9 +320,11 @@ class Embedding(Preprocessor):
             -self.df: pd.DataFrame(): The DataFrame
             with embedded word vectors ready to be used
         """
+        logging.info("The word 2 vec embedding has been chosen and performing")
         pass
 
     def bert_embedder(self):
+        logging.info("The BERT embedding has been chosen and performing")
         model = BertModel.from_pretrained("bert-base-uncased")
         tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
