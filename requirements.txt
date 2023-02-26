@@ -1,6 +1,10 @@
 nltk==3.8.1
+numpy==1.24.2
 pandas==1.4.2
+PyYAML==6.0
 scikit_learn==1.2.1
+scipy==1.10.1
+sentence_transformers==1.1.0
 simplemma==0.9.1
 texthero==1.1.0
 torch==1.13.1
