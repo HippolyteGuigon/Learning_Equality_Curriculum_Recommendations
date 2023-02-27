@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import sys
 import os
+import re
 from scipy import spatial
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
@@ -13,10 +14,73 @@ sys.path.insert(
     0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/logs")
 )
 
+sys.path.insert(
+    0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/configs")
+)
+
+from Learning_equality_curriculum_recommendation.configs.confs import (
+    load_conf,
+    clean_params,
+    Loader,
+)
+
+main_params = load_conf("configs/main.yml", include=True)
+main_params = clean_params(main_params)
+
+sentence_bert_type = main_params["model_type"]
+embedded_data_path = main_params["embedded_data_path"]
+
+embedded_description = pd.read_csv(
+    os.path.join(embedded_data_path, "description_embdedd.csv")
+).dropna()
+embedded_text = pd.read_csv(
+    os.path.join(embedded_data_path, "df_text_embedded.csv")
+).dropna()
+embedded_title = pd.read_csv(
+    os.path.join(embedded_data_path, "df_title_embedded.csv")
+).dropna()
+full_embedded = embedded_description.merge(embedded_text, on="id", how="left")
+full_embedded.dropna(inplace=True)
+topics = pd.read_csv("data/topics.csv")
+
 from logs import *
 
 tqdm.pandas()
 main()
+
+
+def global_clean(string_list: str) -> List[int]:
+    """
+    The goal of this function is to clean all
+    embedded values from string lists to normal
+    lists
+
+    Arguments:
+        -string_list: str: The list represented
+        as a string
+
+    Returns:
+        -cleaned_list: list: The list after it
+        was cleaned and converted
+    """
+    string_list = re.sub(r"\s+", ",", string_list)
+
+    if "[," in string_list:
+        string_list.replace("[,", "[")
+    try:
+        cleaned_list = eval(string_list)
+        return cleaned_list
+    except SyntaxError:
+        cleaned_list = eval(string_list.replace("[,", "["))
+        return cleaned_list
+
+
+logging.info("Cleaning all embeddings...")
+full_embedded["description"] = full_embedded["description"].progress_apply(
+    lambda x: global_clean(x)
+)
+full_embedded["text"] = full_embedded["text"].progress_apply(lambda x: global_clean(x))
+logging.info("Cleaning successfully acheived !")
 
 
 class Sentence_Bert_Model:
@@ -32,7 +96,7 @@ class Sentence_Bert_Model:
 
     def __init__(self, df: pd.DataFrame) -> None:
         self.df = df
-        self.model = SentenceTransformer("distiluse-base-multilingual-cased")
+        self.model = SentenceTransformer(sentence_bert_type)
         logging.info("The Sentence Bert Model has been initialized")
 
     def get_embedding(self, column: str) -> pd.DataFrame():
@@ -59,33 +123,46 @@ class Sentence_Bert_Model:
         return self.df
 
     def get_single_correlation(
-        self, input_sentence: str, limit: int, column: str
+        self,
+        topic_id: str,
+        min_correlation: float,
+        column_compared: str,
+        dataframe_compared=full_embedded,
     ) -> List[str]:
         """
         The goal of this function is to return, for each sentence,
         the most similar other sentences
 
         Arguments:
-            -input_sentence: str: The sentence which most similar
-            ones we are looking for
-            -limit: int: The upper number of similar sentences we
-            want
-            -column: str: The column we are working on and
-            in which we want to find similar
-
+            -topic_id: str: The topic id as it is reported in
+            the DataFrame
+            -min_correlation: int: The minimum correlation required
+            with the input sentence to be retained
+            -column_compared: str: The column to which the topic id will
+            be compared to get the most similar content
+            -dataframe_compared: pd.DataFrame: The DataFrame embedded
+            values will be taken from
         Returns:
-            top_correlated: List[]
+            top_correlated: List[str]: The
         """
 
-        data = self.df.copy()
-        inp_vector = self.model.encode(input_sentence)
-        data[column] = data[column].progress_apply(lambda x: self.model.encode(x))
-        s = data[column].progress_apply(
+        assert column_compared in [
+            "text",
+            "title",
+            "description",
+        ], "The model can only compare\
+the ids with the columns text, title and description"
+
+        inp_text = topics.loc[topics.id == topic_id, column_compared].values[0]
+        inp_vector = self.model.encode(inp_text)
+        s = dataframe_compared[column_compared].progress_apply(
             lambda x: 1 - spatial.distance.cosine(x, inp_vector)
         )
-        data = data.assign(similarity=s)
+        dataframe_compared = dataframe_compared.assign(similarity=s)
         top_correlated = (
-            data.sort_values("similarity", ascending=False).head(limit)["id"].tolist()
+            dataframe_compared[dataframe_compared.similarity >= min_correlation]
+            .sort_values("similarity", ascending=False)["id"]
+            .tolist()
         )
 
         return top_correlated

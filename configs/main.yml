@@ -1,0 +1,2 @@
+global_pipeline: !include global_pipeline.yml
+sentence_bert: !include sentence_bert.yml
