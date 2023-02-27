@@ -1,29 +1,36 @@
 # The goal of this python file is to perform unsupervised analysis
 # on data that has just been preprocessed
 
-import texthero as hero
+#import texthero as hero
 import pandas as pd
 from typing import List
+from tqdm import tqdm
 
-content=pd.read_csv("data/content.csv")
+tqdm.pandas()
 
-def single_kind_analysis(correlated_content: str)->List[str]:
+def single_column_analysis(column_inspected: str)->pd.DataFrame:
     """
     The goal of this function is to get the kind (video, html) of given 
     content ids 
     
     Arguments:
-        -correlated_content: str: The string of the different
-        contents correlated 
+        -column_inspected: str: The column that is to be 
+        compared between topics and content
         
     Returns:
-        -correlated_content: List[str]: The kind of the different
-        content id repertoriated
+        -correlations: pd.DataFrame: The DataFrame with the compared
+        column for each content id
     """
-    correlated_content=correlated_content.split(" ")
-    correlated_content=[content.loc[content.id==x,"kind"] for x in correlated_content]
-
-    return correlated_content
+    correlations=pd.read_csv("data/correlations.csv")
+    content=pd.read_csv("data/content.csv")
+    topics=pd.read_csv("data/topics.csv")
+    correlations["content_ids"]=correlations["content_ids"].apply(lambda x: x.split(" "))
+    correlations=correlations.explode("content_ids")
+    topics=topics[["id",column_inspected]].rename(columns={column_inspected:"topics_"+column_inspected})
+    content=content[["id",column_inspected]].rename(columns={column_inspected:"content_"+column_inspected})
+    correlations=correlations.merge(topics,left_on="topic_id",right_on="id",how="left")
+    correlations=correlations.merge(content,left_on="content_ids",right_on="id",how="left")
+    return correlations
 
 class Dimension_Reduction:
     """
