@@ -3,7 +3,27 @@
 
 import texthero as hero
 import pandas as pd
+from typing import List
 
+content=pd.read_csv("data/content.csv")
+
+def single_kind_analysis(correlated_content: str)->List[str]:
+    """
+    The goal of this function is to get the kind (video, html) of given 
+    content ids 
+    
+    Arguments:
+        -correlated_content: str: The string of the different
+        contents correlated 
+        
+    Returns:
+        -correlated_content: List[str]: The kind of the different
+        content id repertoriated
+    """
+    correlated_content=correlated_content.split(" ")
+    correlated_content=[content.loc[content.id==x,"kind"] for x in correlated_content]
+
+    return correlated_content
 
 class Dimension_Reduction:
     """
