@@ -30,6 +30,7 @@ def single_column_analysis(column_inspected: str)->pd.DataFrame:
     content=content[["id",column_inspected]].rename(columns={column_inspected:"content_"+column_inspected})
     correlations=correlations.merge(topics,left_on="topic_id",right_on="id",how="left")
     correlations=correlations.merge(content,left_on="content_ids",right_on="id",how="left")
+    correlations=correlations.drop(["id_x","id_y"],axis=1)
     return correlations
 
 class Dimension_Reduction:
