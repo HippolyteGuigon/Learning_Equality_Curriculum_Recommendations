@@ -1,7 +1,7 @@
 # The goal of this python file is to perform unsupervised analysis
 # on data that has just been preprocessed
 
-import texthero as hero
+#import texthero as hero
 import pandas as pd
 import os
 import sys
@@ -38,7 +38,7 @@ def single_column_analysis(column_inspected: str)->pd.DataFrame:
         correlations = pd.read_csv(main_params["correlations_link"])
         topics = pd.read_csv(main_params["topics_link"])
         content = pd.read_csv(main_params["content_link"])
-        
+
     correlations["content_ids"]=correlations["content_ids"].apply(lambda x: x.split(" "))
     correlations=correlations.explode("content_ids")
     topics=topics[["id",column_inspected]].rename(columns={column_inspected:"topics_"+column_inspected})

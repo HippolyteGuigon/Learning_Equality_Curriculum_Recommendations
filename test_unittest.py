@@ -23,10 +23,9 @@ class Test(unittest.TestCase):
     """
 
     def test_single_column_analysis_function(self) -> bool:
-        df_analysis_test = single_column_analysis("kind")
-        self.assertTrue("content_kind" in df_analysis_test.columns)
-        self.assertTrue("topics_kind" in df_analysis_test.columns)
-
+        df_analysis_test = single_column_analysis("language")
+        self.assertTrue("content_language" in df_analysis_test.columns)
+        self.assertTrue("topics_language" in df_analysis_test.columns)
 
 if __name__ == "__main__":
     unittest.main()
