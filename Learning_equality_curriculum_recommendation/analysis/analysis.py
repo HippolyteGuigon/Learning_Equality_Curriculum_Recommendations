@@ -3,14 +3,26 @@
 
 import texthero as hero
 import pandas as pd
+import os
+import sys
 from typing import List
 from tqdm import tqdm
 
+sys.path.insert(0, "Learning_Equality_curriculum_Recommendation/configs")
+from confs import load_conf,clean_params, Loader
+
+main_params = load_conf("configs/main.yml", include=True)
+main_params = clean_params(main_params)
 tqdm.pandas()
 
-correlations=pd.read_csv("data/correlations.csv")
-content=pd.read_csv("data/content.csv")
-topics=pd.read_csv("data/topics.csv")
+if os.path.exists("data/correlations.csv"):
+    correlations=pd.read_csv("data/correlations.csv")
+    content=pd.read_csv("data/content.csv")
+    topics=pd.read_csv("data/topics.csv")
+else:
+    correlations = pd.read_csv(main_params["correlations_link"])
+    topics = pd.read_csv(main_params["topics_link"])
+    content = pd.read_csv(main_params["content_link"])
 
 def single_column_analysis(column_inspected: str)->pd.DataFrame:
     """
