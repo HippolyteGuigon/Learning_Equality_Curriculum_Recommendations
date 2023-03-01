@@ -1,7 +1,7 @@
 # The goal of this python file is to perform unsupervised analysis
 # on data that has just been preprocessed
 
-#import texthero as hero
+import texthero as hero
 import pandas as pd
 from typing import List
 from tqdm import tqdm
