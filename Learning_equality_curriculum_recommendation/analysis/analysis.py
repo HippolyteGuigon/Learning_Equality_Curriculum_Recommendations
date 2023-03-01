@@ -15,14 +15,7 @@ main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
 tqdm.pandas()
 
-if os.path.exists("data/correlations.csv"):
-    correlations=pd.read_csv("data/correlations.csv")
-    content=pd.read_csv("data/content.csv")
-    topics=pd.read_csv("data/topics.csv")
-else:
-    correlations = pd.read_csv(main_params["correlations_link"])
-    topics = pd.read_csv(main_params["topics_link"])
-    content = pd.read_csv(main_params["content_link"])
+
 
 def single_column_analysis(column_inspected: str)->pd.DataFrame:
     """
@@ -37,7 +30,15 @@ def single_column_analysis(column_inspected: str)->pd.DataFrame:
         -correlations: pd.DataFrame: The DataFrame with the compared
         column for each content id
     """
-    
+    if os.path.exists("data/correlations.csv"):
+        correlations=pd.read_csv("data/correlations.csv")
+        content=pd.read_csv("data/content.csv")
+        topics=pd.read_csv("data/topics.csv")
+    else:
+        correlations = pd.read_csv(main_params["correlations_link"])
+        topics = pd.read_csv(main_params["topics_link"])
+        content = pd.read_csv(main_params["content_link"])
+        
     correlations["content_ids"]=correlations["content_ids"].apply(lambda x: x.split(" "))
     correlations=correlations.explode("content_ids")
     topics=topics[["id",column_inspected]].rename(columns={column_inspected:"topics_"+column_inspected})
