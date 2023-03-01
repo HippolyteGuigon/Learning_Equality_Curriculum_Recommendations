@@ -8,6 +8,10 @@ from tqdm import tqdm
 
 tqdm.pandas()
 
+correlations=pd.read_csv("data/correlations.csv")
+content=pd.read_csv("data/content.csv")
+topics=pd.read_csv("data/topics.csv")
+
 def single_column_analysis(column_inspected: str)->pd.DataFrame:
     """
     The goal of this function is to get the kind (video, html) of given 
@@ -21,9 +25,7 @@ def single_column_analysis(column_inspected: str)->pd.DataFrame:
         -correlations: pd.DataFrame: The DataFrame with the compared
         column for each content id
     """
-    correlations=pd.read_csv("data/correlations.csv")
-    content=pd.read_csv("data/content.csv")
-    topics=pd.read_csv("data/topics.csv")
+    
     correlations["content_ids"]=correlations["content_ids"].apply(lambda x: x.split(" "))
     correlations=correlations.explode("content_ids")
     topics=topics[["id",column_inspected]].rename(columns={column_inspected:"topics_"+column_inspected})
