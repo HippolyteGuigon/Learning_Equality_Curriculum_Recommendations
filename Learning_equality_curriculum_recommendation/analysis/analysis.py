@@ -8,8 +8,7 @@ import sys
 from typing import List
 from tqdm import tqdm
 
-sys.path.insert(0, "Learning_Equality_curriculum_Recommendation/configs")
-from confs import load_conf,clean_params, Loader
+from Learning_equality_curriculum_recommendation.configs.confs import load_conf,clean_params, Loader
 
 main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
