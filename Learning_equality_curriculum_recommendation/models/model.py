@@ -232,7 +232,7 @@ def get_all_cosine(index: int, df: pd.DataFrame, column: str) -> np.array:
     logging.info(f"The cosine similarity computation has begun")
     df_extract = df.drop(index, axis=0)
     candidates = df_extract[column].tolist()
-    reference = df.loc[i, column]
+    reference = df.loc[index, column]
     similarities = [cosine(reference, x) for x in candidates]
 
     return similarities
