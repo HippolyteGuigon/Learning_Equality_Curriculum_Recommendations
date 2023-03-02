@@ -172,22 +172,18 @@ the ids with the columns text, title and description"
             most correlated with the given topic id
         """
         
-        compared_columns=["language", "description", "title"]
+        compared_columns=["language", "description"]
         compared_elements = topics.loc[topics.id == topic_id, compared_columns].values
 
-        language, description, title = compared_elements[0], compared_elements[1], compared_elements[2]
+        language, description= compared_elements[0][0], compared_elements[0][1]
         description = self.model.encode(description)
-        title = self.model.encode(title)
 
         language_similarity=np.array(dataframe_compared["language"]==language)
         description_similarity = np.array(dataframe_compared["description"].progress_apply(
             lambda x: 1 - spatial.distance.cosine(x, description)
         ))
-        title_similarity = np.array(dataframe_compared["title"].progress_apply(
-            lambda x: 1 - spatial.distance.cosine(x, description)
-        ))
 
-        full_similarities=np.hstack((language_similarity,description_similarity,title_similarity))
+        full_similarities=np.vstack((language_similarity,description_similarity))
         full_similarities=sentence_bert_weights@full_similarities
 
         dataframe_compared = dataframe_compared.assign(similarity=full_similarities)
