@@ -3,6 +3,7 @@ import pandas as pd
 import sys
 import os
 import re
+import logging
 from scipy import spatial
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
@@ -10,14 +11,7 @@ from typing import List
 from numpy.linalg import norm
 from tqdm import tqdm
 
-sys.path.insert(
-    0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/logs")
-)
-
-sys.path.insert(
-    0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/configs")
-)
-
+from Learning_equality_curriculum_recommendation.logs.logs import main
 from Learning_equality_curriculum_recommendation.configs.confs import (
     load_conf,
     clean_params,
@@ -28,6 +22,8 @@ main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
 
 sentence_bert_type = main_params["model_type"]
+correlation_treshold = main_params["correlation_treshold"]
+sentence_bert_weights = main_params["sentence_bert_weights"]
 embedded_data_path = main_params["embedded_data_path"]
 
 embedded_description = pd.read_csv(
@@ -42,8 +38,6 @@ embedded_title = pd.read_csv(
 full_embedded = embedded_description.merge(embedded_text, on="id", how="left")
 full_embedded.dropna(inplace=True)
 topics = pd.read_csv("data/topics.csv")
-
-from logs import *
 
 tqdm.pandas()
 main()
@@ -125,7 +119,6 @@ class Sentence_Bert_Model:
     def get_single_correlation(
         self,
         topic_id: str,
-        min_correlation: float,
         column_compared: str,
         dataframe_compared=full_embedded,
     ) -> List[str]:
@@ -136,8 +129,6 @@ class Sentence_Bert_Model:
         Arguments:
             -topic_id: str: The topic id as it is reported in
             the DataFrame
-            -min_correlation: int: The minimum correlation required
-            with the input sentence to be retained
             -column_compared: str: The column to which the topic id will
             be compared to get the most similar content
             -dataframe_compared: pd.DataFrame: The DataFrame embedded
@@ -160,14 +151,55 @@ the ids with the columns text, title and description"
         )
         dataframe_compared = dataframe_compared.assign(similarity=s)
         top_correlated = (
-            dataframe_compared[dataframe_compared.similarity >= min_correlation]
+            dataframe_compared[dataframe_compared.similarity >= correlation_treshold]
             .sort_values("similarity", ascending=False)["id"]
             .tolist()
         )
 
         return top_correlated
 
+    def get_full_correlation(self, topic_id: str, dataframe_compared=full_embedded)->List[str]:
+        """
+        The goal of this function is to get, for a given topic, 
+        the content ids that are the most correlated
+        
+        Arguments:
+            -topic_id: str: The topic id which top content
+            correlated id we're looking for 
+            
+        Returns:
+            -top_correlated: str: The list of the content ids
+            most correlated with the given topic id
+        """
+        
+        compared_columns=["language", "description", "title"]
+        compared_elements = topics.loc[topics.id == topic_id, compared_columns].values
 
+        language, description, title = compared_elements[0], compared_elements[1], compared_elements[2]
+        description = self.model.encode(description)
+        title = self.model.encode(title)
+
+        language_similarity=np.array(dataframe_compared["language"]==language)
+        description_similarity = np.array(dataframe_compared["description"].progress_apply(
+            lambda x: 1 - spatial.distance.cosine(x, description)
+        ))
+        title_similarity = np.array(dataframe_compared["title"].progress_apply(
+            lambda x: 1 - spatial.distance.cosine(x, description)
+        ))
+
+        full_similarities=np.hstack((language_similarity,description_similarity,title_similarity))
+        full_similarities=sentence_bert_weights@full_similarities
+
+        dataframe_compared = dataframe_compared.assign(similarity=full_similarities)
+
+        top_correlated = (
+            dataframe_compared[dataframe_compared.similarity >= correlation_treshold]
+            .sort_values("similarity", ascending=False)["id"]
+            .tolist()
+        )
+
+        return top_correlated
+    
 def cosine(x: np.array, y: np.array) -> float:
     """
     The goal of this function is to compute the

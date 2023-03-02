@@ -98,3 +98,6 @@
 2023-02-27 08:36:30,556 | INFO | Search model on server: http://sbert.net/models/distiluse-base-multilingual-cased.zip
 2023-02-27 08:36:30,607 | INFO | Load SentenceTransformer from folder: /Users/hippodouche/.cache/torch/sentence_transformers/sbert.net_models_distiluse-base-multilingual-cased
 2023-02-27 08:36:52,183 | INFO | Use pytorch device: cpu
+2023-03-02 06:56:21,965 | INFO | Cleaning all embeddings...
+2023-03-02 07:29:53,210 | INFO | Cleaning successfully acheived !
+2023-03-02 07:32:54,540 | INFO | Cleaning all embeddings...
