@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="Hispatologic_cancer_detection",
+    name="Learning_equality_curriculum_recommendation",
     version="0.1.0",
     packages=find_packages(
         include=["Learning_equality_curriculum_recommendation", "Learning_equality_curriculum_recommendation.*"]

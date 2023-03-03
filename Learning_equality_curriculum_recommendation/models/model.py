@@ -3,6 +3,7 @@ import pandas as pd
 import sys
 import os
 import re
+import logging
 from scipy import spatial
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
@@ -10,14 +11,7 @@ from typing import List
 from numpy.linalg import norm
 from tqdm import tqdm
 
-sys.path.insert(
-    0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/logs")
-)
-
-sys.path.insert(
-    0, os.path.join(os.getcwd(), "Learning_equality_curriculum_recommendation/configs")
-)
-
+from Learning_equality_curriculum_recommendation.logs.logs import main
 from Learning_equality_curriculum_recommendation.configs.confs import (
     load_conf,
     clean_params,
@@ -28,10 +22,12 @@ main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
 
 sentence_bert_type = main_params["model_type"]
+correlation_treshold = main_params["correlation_treshold"]
+sentence_bert_weights = main_params["sentence_bert_weights"]
 embedded_data_path = main_params["embedded_data_path"]
 
-embedded_description = pd.read_csv(
-    os.path.join(embedded_data_path, "description_embdedd.csv")
+embedded_description = pd.read_pickle(
+    os.path.join(embedded_data_path, "description_embdedd.pkl")
 ).dropna()
 embedded_text = pd.read_csv(
     os.path.join(embedded_data_path, "df_text_embedded.csv")
@@ -42,8 +38,6 @@ embedded_title = pd.read_csv(
 full_embedded = embedded_description.merge(embedded_text, on="id", how="left")
 full_embedded.dropna(inplace=True)
 topics = pd.read_csv("data/topics.csv")
-
-from logs import *
 
 tqdm.pandas()
 main()
@@ -74,14 +68,11 @@ def global_clean(string_list: str) -> List[int]:
         cleaned_list = eval(string_list.replace("[,", "["))
         return cleaned_list
 
-
+content=pd.read_csv("data/content.csv")
+full_embedded=full_embedded.merge(content[["id","language"]],on="id", how="left")
 logging.info("Cleaning all embeddings...")
-full_embedded["description"] = full_embedded["description"].progress_apply(
-    lambda x: global_clean(x)
-)
 full_embedded["text"] = full_embedded["text"].progress_apply(lambda x: global_clean(x))
 logging.info("Cleaning successfully acheived !")
-
 
 class Sentence_Bert_Model:
     """
@@ -125,7 +116,6 @@ class Sentence_Bert_Model:
     def get_single_correlation(
         self,
         topic_id: str,
-        min_correlation: float,
         column_compared: str,
         dataframe_compared=full_embedded,
     ) -> List[str]:
@@ -136,8 +126,6 @@ class Sentence_Bert_Model:
         Arguments:
             -topic_id: str: The topic id as it is reported in
             the DataFrame
-            -min_correlation: int: The minimum correlation required
-            with the input sentence to be retained
             -column_compared: str: The column to which the topic id will
             be compared to get the most similar content
             -dataframe_compared: pd.DataFrame: The DataFrame embedded
@@ -160,14 +148,51 @@ the ids with the columns text, title and description"
         )
         dataframe_compared = dataframe_compared.assign(similarity=s)
         top_correlated = (
-            dataframe_compared[dataframe_compared.similarity >= min_correlation]
+            dataframe_compared[dataframe_compared.similarity >= correlation_treshold]
             .sort_values("similarity", ascending=False)["id"]
             .tolist()
         )
 
         return top_correlated
 
+    def get_full_correlation(self, topic_id: str, dataframe_compared=full_embedded)->List[str]:
+        """
+        The goal of this function is to get, for a given topic, 
+        the content ids that are the most correlated
+        
+        Arguments:
+            -topic_id: str: The topic id which top content
+            correlated id we're looking for 
+            
+        Returns:
+            -top_correlated: str: The list of the content ids
+            most correlated with the given topic id
+        """
+        
+        compared_columns=["language", "description"]
+        compared_elements = topics.loc[topics.id == topic_id, compared_columns].values
 
+        language, description= compared_elements[0][0], compared_elements[0][1]
+        description = self.model.encode(description)
+
+        language_similarity=np.array(dataframe_compared["language"]==language)
+        description_similarity = np.array(dataframe_compared["description"].progress_apply(
+            lambda x: 1 - spatial.distance.cosine(x, description)
+        ))
+
+        full_similarities=np.vstack((language_similarity,description_similarity))
+        full_similarities=sentence_bert_weights@full_similarities
+
+        dataframe_compared = dataframe_compared.assign(similarity=full_similarities)
+
+        top_correlated = (
+            dataframe_compared[dataframe_compared.similarity >= correlation_treshold]
+            .sort_values("similarity", ascending=False)["id"]
+            .tolist()
+        )
+
+        return top_correlated
+    
 def cosine(x: np.array, y: np.array) -> float:
     """
     The goal of this function is to compute the
@@ -204,7 +229,7 @@ def get_all_cosine(index: int, df: pd.DataFrame, column: str) -> np.array:
     logging.info(f"The cosine similarity computation has begun")
     df_extract = df.drop(index, axis=0)
     candidates = df_extract[column].tolist()
-    reference = df.loc[i, column]
+    reference = df.loc[index, column]
     similarities = [cosine(reference, x) for x in candidates]
 
     return similarities

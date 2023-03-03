@@ -2,6 +2,15 @@ repos:
 
 - repo: local
   hooks:
+    - id: updating_setup
+      name: updating_setup.py
+      entry: bash -c "python setup.py install"
+      language: system
+      types: [python]
+      pass_filenames: false
+      
+- repo: local
+  hooks:
     - id: update_requirements
       name: updating_requirements.txt
       entry: bash -c "python3 -m  pipreqs.pipreqs . --force"
