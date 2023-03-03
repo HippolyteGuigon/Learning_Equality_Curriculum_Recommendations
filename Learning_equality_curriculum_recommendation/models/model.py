@@ -26,8 +26,8 @@ correlation_treshold = main_params["correlation_treshold"]
 sentence_bert_weights = main_params["sentence_bert_weights"]
 embedded_data_path = main_params["embedded_data_path"]
 
-embedded_description = pd.read_csv(
-    os.path.join(embedded_data_path, "description_embdedd.csv")
+embedded_description = pd.read_pickle(
+    os.path.join(embedded_data_path, "description_embdedd.pkl")
 ).dropna()
 embedded_text = pd.read_csv(
     os.path.join(embedded_data_path, "df_text_embedded.csv")
@@ -68,14 +68,11 @@ def global_clean(string_list: str) -> List[int]:
         cleaned_list = eval(string_list.replace("[,", "["))
         return cleaned_list
 
-
+content=pd.read_csv("data/content.csv")
+full_embedded=full_embedded.merge(content[["id","language"]],on="id", how="left")
 logging.info("Cleaning all embeddings...")
-full_embedded["description"] = full_embedded["description"].progress_apply(
-    lambda x: global_clean(x)
-)
 full_embedded["text"] = full_embedded["text"].progress_apply(lambda x: global_clean(x))
 logging.info("Cleaning successfully acheived !")
-
 
 class Sentence_Bert_Model:
     """
