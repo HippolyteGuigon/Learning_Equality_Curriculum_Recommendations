@@ -131,3 +131,33 @@
 2023-03-03 10:39:54,433 | INFO | Load SentenceTransformer from folder: /Users/hippodouche/.cache/torch/sentence_transformers/sbert.net_models_distiluse-base-multilingual-cased
 2023-03-03 10:40:13,728 | INFO | Use pytorch device: cpu
 2023-03-03 10:40:13,747 | INFO | The Sentence Bert Model has been initialized
+2023-03-04 12:45:41,525 | INFO | Load pretrained SentenceTransformer: distiluse-base-multilingual-cased
+2023-03-04 12:45:41,603 | INFO | Did not find folder distiluse-base-multilingual-cased
+2023-03-04 12:45:41,605 | INFO | Search model on server: http://sbert.net/models/distiluse-base-multilingual-cased.zip
+2023-03-04 12:45:41,644 | INFO | Load SentenceTransformer from folder: /Users/hippodouche/.cache/torch/sentence_transformers/sbert.net_models_distiluse-base-multilingual-cased
+2023-03-04 12:46:14,978 | INFO | Use pytorch device: cpu
+2023-03-04 12:46:14,989 | INFO | The Sentence Bert Model has been initialized
+2023-03-04 12:59:47,280 | INFO | Load pretrained SentenceTransformer: distiluse-base-multilingual-cased
+2023-03-04 12:59:47,497 | INFO | Did not find folder distiluse-base-multilingual-cased
+2023-03-04 12:59:47,504 | INFO | Search model on server: http://sbert.net/models/distiluse-base-multilingual-cased.zip
+2023-03-04 12:59:47,546 | INFO | Load SentenceTransformer from folder: /Users/hippodouche/.cache/torch/sentence_transformers/sbert.net_models_distiluse-base-multilingual-cased
+2023-03-04 13:00:16,195 | INFO | Use pytorch device: cpu
+2023-03-04 13:00:16,270 | INFO | The Sentence Bert Model has been initialized
+2023-03-04 13:11:13,919 | INFO | Load pretrained SentenceTransformer: distiluse-base-multilingual-cased
+2023-03-04 13:11:13,980 | INFO | Did not find folder distiluse-base-multilingual-cased
+2023-03-04 13:11:13,992 | INFO | Search model on server: http://sbert.net/models/distiluse-base-multilingual-cased.zip
+2023-03-04 13:11:14,029 | INFO | Load SentenceTransformer from folder: /Users/hippodouche/.cache/torch/sentence_transformers/sbert.net_models_distiluse-base-multilingual-cased
+2023-03-04 13:11:31,848 | INFO | Use pytorch device: cpu
+2023-03-04 13:11:31,919 | INFO | The Sentence Bert Model has been initialized
+2023-03-04 13:19:37,573 | INFO | Load pretrained SentenceTransformer: distiluse-base-multilingual-cased
+2023-03-04 13:19:37,745 | INFO | Did not find folder distiluse-base-multilingual-cased
+2023-03-04 13:19:37,755 | INFO | Search model on server: http://sbert.net/models/distiluse-base-multilingual-cased.zip
+2023-03-04 13:19:37,814 | INFO | Load SentenceTransformer from folder: /Users/hippodouche/.cache/torch/sentence_transformers/sbert.net_models_distiluse-base-multilingual-cased
+2023-03-04 13:19:54,165 | INFO | Use pytorch device: cpu
+2023-03-04 13:19:54,179 | INFO | The Sentence Bert Model has been initialized
+2023-03-04 13:29:06,158 | INFO | Load pretrained SentenceTransformer: distiluse-base-multilingual-cased
+2023-03-04 13:29:06,991 | INFO | Did not find folder distiluse-base-multilingual-cased
+2023-03-04 13:29:07,004 | INFO | Search model on server: http://sbert.net/models/distiluse-base-multilingual-cased.zip
+2023-03-04 13:29:07,201 | INFO | Load SentenceTransformer from folder: /Users/hippodouche/.cache/torch/sentence_transformers/sbert.net_models_distiluse-base-multilingual-cased
+2023-03-04 13:29:41,154 | INFO | Use pytorch device: cpu
+2023-03-04 13:29:41,165 | INFO | The Sentence Bert Model has been initialized

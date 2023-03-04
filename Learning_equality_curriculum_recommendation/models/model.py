@@ -29,13 +29,14 @@ embedded_data_path = main_params["embedded_data_path"]
 embedded_description = pd.read_pickle(
     os.path.join(embedded_data_path, "description_embdedd.pkl")
 ).dropna()
-embedded_text = pd.read_csv(
-    os.path.join(embedded_data_path, "df_text_embedded.csv")
+embedded_text = pd.read_pickle(
+    os.path.join(embedded_data_path, "df_text_embedded.pkl")
 ).dropna()
-embedded_title = pd.read_csv(
-    os.path.join(embedded_data_path, "df_title_embedded.csv")
+embedded_title = pd.read_pickle(
+    os.path.join(embedded_data_path, "df_title_embedded.pkl")
 ).dropna()
 full_embedded = embedded_description.merge(embedded_text, on="id", how="left")
+full_embedded = full_embedded.merge(embedded_title, on="id", how="left")
 full_embedded.dropna(inplace=True)
 topics = pd.read_csv("data/topics.csv")
 
@@ -70,9 +71,6 @@ def global_clean(string_list: str) -> List[int]:
 
 content=pd.read_csv("data/content.csv")
 full_embedded=full_embedded.merge(content[["id","language"]],on="id", how="left")
-logging.info("Cleaning all embeddings...")
-full_embedded["text"] = full_embedded["text"].progress_apply(lambda x: global_clean(x))
-logging.info("Cleaning successfully acheived !")
 
 class Sentence_Bert_Model:
     """
@@ -169,18 +167,24 @@ the ids with the columns text, title and description"
             most correlated with the given topic id
         """
         
-        compared_columns=["language", "description"]
+        compared_columns=["language", "description", "title"]
+        print(dataframe_compared)
         compared_elements = topics.loc[topics.id == topic_id, compared_columns].values
 
-        language, description= compared_elements[0][0], compared_elements[0][1]
+        language, description, title= compared_elements[0][0], compared_elements[0][1], compared_elements[0][2]
         description = self.model.encode(description)
+        title = self.model.encode(title)
 
         language_similarity=np.array(dataframe_compared["language"]==language)
         description_similarity = np.array(dataframe_compared["description"].progress_apply(
             lambda x: 1 - spatial.distance.cosine(x, description)
         ))
 
-        full_similarities=np.vstack((language_similarity,description_similarity))
+        title_similarity = np.array(dataframe_compared["title"].progress_apply(
+            lambda x: 1 - spatial.distance.cosine(x, title)
+        ))
+
+        full_similarities=np.vstack((language_similarity,description_similarity, title_similarity))
         full_similarities=sentence_bert_weights@full_similarities
 
         dataframe_compared = dataframe_compared.assign(similarity=full_similarities)
