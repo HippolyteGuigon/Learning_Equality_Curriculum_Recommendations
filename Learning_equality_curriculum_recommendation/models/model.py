@@ -168,7 +168,6 @@ the ids with the columns text, title and description"
         """
         
         compared_columns=["language", "description", "title"]
-        print(dataframe_compared)
         compared_elements = topics.loc[topics.id == topic_id, compared_columns].values
 
         language, description, title= compared_elements[0][0], compared_elements[0][1], compared_elements[0][2]
