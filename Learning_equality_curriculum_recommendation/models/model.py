@@ -39,6 +39,7 @@ full_embedded = embedded_description.merge(embedded_text, on="id", how="left")
 full_embedded = full_embedded.merge(embedded_title, on="id", how="left")
 full_embedded.dropna(inplace=True)
 topics = pd.read_csv("data/topics.csv")
+topics.fillna("-",inplace=True)
 
 tqdm.pandas()
 main()
@@ -153,7 +154,7 @@ the ids with the columns text, title and description"
 
         return top_correlated
 
-    def get_full_correlation(self, topic_id: str, dataframe_compared=full_embedded)->List[str]:
+    def get_full_correlation(self, topic_id: str, dataframe_compared=full_embedded)->str:
         """
         The goal of this function is to get, for a given topic, 
         the content ids that are the most correlated
@@ -193,6 +194,10 @@ the ids with the columns text, title and description"
             .sort_values("similarity", ascending=False)["id"]
             .tolist()
         )
+
+        top_correlated = top_correlated[:10]
+
+        top_correlated = " ".join(top_correlated)
 
         return top_correlated
     
