@@ -1,1 +1,6 @@
 unsupervised_model: 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+batch_size: 32
+n_folds: 5
+top_n: 50
+threshold: 0.06
+num_workers: 4
