@@ -1,3 +1,4 @@
 global_pipeline: !include global_pipeline.yml
 sentence_bert: !include sentence_bert.yml
 google_storage: !include google_storage.yml
+transformer_model: !include transformer_model.yml

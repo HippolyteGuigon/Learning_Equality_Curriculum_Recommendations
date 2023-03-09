@@ -17,7 +17,6 @@ from Learning_equality_curriculum_recommendation.configs.confs import (
     clean_params,
     Loader,
 )
-
 main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
 
