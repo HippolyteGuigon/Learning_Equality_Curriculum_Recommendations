@@ -17,7 +17,6 @@ from Learning_equality_curriculum_recommendation.configs.confs import (
     clean_params,
     Loader,
 )
-
 main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
 
@@ -29,15 +28,17 @@ embedded_data_path = main_params["embedded_data_path"]
 embedded_description = pd.read_pickle(
     os.path.join(embedded_data_path, "description_embdedd.pkl")
 ).dropna()
-embedded_text = pd.read_csv(
-    os.path.join(embedded_data_path, "df_text_embedded.csv")
+embedded_text = pd.read_pickle(
+    os.path.join(embedded_data_path, "df_text_embedded.pkl")
 ).dropna()
-embedded_title = pd.read_csv(
-    os.path.join(embedded_data_path, "df_title_embedded.csv")
+embedded_title = pd.read_pickle(
+    os.path.join(embedded_data_path, "df_title_embedded.pkl")
 ).dropna()
 full_embedded = embedded_description.merge(embedded_text, on="id", how="left")
+full_embedded = full_embedded.merge(embedded_title, on="id", how="left")
 full_embedded.dropna(inplace=True)
 topics = pd.read_csv("data/topics.csv")
+topics.fillna("-",inplace=True)
 
 tqdm.pandas()
 main()
@@ -70,9 +71,6 @@ def global_clean(string_list: str) -> List[int]:
 
 content=pd.read_csv("data/content.csv")
 full_embedded=full_embedded.merge(content[["id","language"]],on="id", how="left")
-logging.info("Cleaning all embeddings...")
-full_embedded["text"] = full_embedded["text"].progress_apply(lambda x: global_clean(x))
-logging.info("Cleaning successfully acheived !")
 
 class Sentence_Bert_Model:
     """
@@ -155,7 +153,7 @@ the ids with the columns text, title and description"
 
         return top_correlated
 
-    def get_full_correlation(self, topic_id: str, dataframe_compared=full_embedded)->List[str]:
+    def get_full_correlation(self, topic_id: str, dataframe_compared=full_embedded)->str:
         """
         The goal of this function is to get, for a given topic, 
         the content ids that are the most correlated
@@ -169,18 +167,23 @@ the ids with the columns text, title and description"
             most correlated with the given topic id
         """
         
-        compared_columns=["language", "description"]
+        compared_columns=["language", "description", "title"]
         compared_elements = topics.loc[topics.id == topic_id, compared_columns].values
 
-        language, description= compared_elements[0][0], compared_elements[0][1]
+        language, description, title= compared_elements[0][0], compared_elements[0][1], compared_elements[0][2]
         description = self.model.encode(description)
+        title = self.model.encode(title)
 
         language_similarity=np.array(dataframe_compared["language"]==language)
         description_similarity = np.array(dataframe_compared["description"].progress_apply(
             lambda x: 1 - spatial.distance.cosine(x, description)
         ))
 
-        full_similarities=np.vstack((language_similarity,description_similarity))
+        title_similarity = np.array(dataframe_compared["title"].progress_apply(
+            lambda x: 1 - spatial.distance.cosine(x, title)
+        ))
+
+        full_similarities=np.vstack((language_similarity,description_similarity, title_similarity))
         full_similarities=sentence_bert_weights@full_similarities
 
         dataframe_compared = dataframe_compared.assign(similarity=full_similarities)
@@ -190,6 +193,10 @@ the ids with the columns text, title and description"
             .sort_values("similarity", ascending=False)["id"]
             .tolist()
         )
+
+        top_correlated = top_correlated[:10]
+
+        top_correlated = " ".join(top_correlated)
 
         return top_correlated
     
