@@ -187,7 +187,7 @@ class Transformer_model:
         self.topics_preds = np.array(self.get_embeddings(self.topics_loader, model, device))
         self.content_preds = np.array(self.get_embeddings(self.content_loader, model, device))
         self.neighbors_model = NearestNeighbors(n_neighbors = top_n, metric = 'cosine')
-        self.neighbors_model.fit(content_preds)
+        self.neighbors_model.fit(self.content_preds)
 
     def predict(self):
         indices = self.neighbors_model.kneighbors(self.topics_preds, return_distance = False)
@@ -205,3 +205,6 @@ if __name__=="__main__":
     model=Transformer_model()
     model.get_loader()
     model.fit()
+    a, b = model.predict()
+    a.to_csv("topics_pred.csv",index=False)
+    b.to_csv("content_pred.csv",index=False)

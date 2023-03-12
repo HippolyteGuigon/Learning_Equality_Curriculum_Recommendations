@@ -1,1 +1,2 @@
 embedded_data_path: "data/embedded_data"
+chosen_model: "transformer_model"
