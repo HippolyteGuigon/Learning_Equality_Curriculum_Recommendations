@@ -4,7 +4,9 @@ The goal of this repository is to participate to the Learning Equality Curriculu
 
 ## Build Status
 
-For the moment, the project has just begun 
+For the moment, two models are ready to be used in the main pipeline: Sentence Bert model and a Transformer encoder used with KNN. 
+
+The objective for the rest of the project is to fine tune the hyperparameters while making the overall utilisation very intuitive and user friendly.
 
 Throughout its construction, if you see any improvements that could be made in the code, do not hesitate to reach out at 
 Hippolyte.guigon@hec.edu
@@ -15,6 +17,11 @@ The all project was coded under PEP-8 (https://peps.python.org/pep-0008/) and fl
 
 ## Installation
 
+* This project uses a specific conda environment, to get it, run the following command: ```conda env create -f learning_equality_curriculum_recommendation.yml```
+
+* To install all necessary libraries, run the following code: ```pip install -r requirements.txt```
+
+* This project has its own package that is used. To get it, run the following command: ```python install setup.py```
 
 ## Screenshot 
 
@@ -24,3 +31,4 @@ Recommendation of an educational ressource for a given research
 
 ## How to use ? 
 
+For the moment, the main.py file is still under construction. 
