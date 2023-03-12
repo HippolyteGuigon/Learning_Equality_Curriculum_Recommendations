@@ -1,20 +1,30 @@
 import pandas as pd 
+import numpy as np
+import os
 import transformers
 import torch
+import torch.nn as nn
+from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel, AutoConfig
 from torch.utils.data import DataLoader, Dataset
 from transformers import get_cosine_schedule_with_warmup, DataCollatorWithPadding
+from sklearn.neighbors import NearestNeighbors
 from Learning_equality_curriculum_recommendation.configs.confs import (
     load_conf,
     clean_params,
     Loader,
 )
 
+os.environ["TOKENIZERS_PARALLELISM"]="False"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+tqdm.pandas()
+
 main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
 unsupervised_model = main_params["unsupervised_model"]
 batch_size = main_params["batch_size"]
 num_workers=main_params["num_workers"]
+top_n = main_params["top_n"]
 
 unsupervised_tokenizer = AutoTokenizer.from_pretrained(unsupervised_model)
 
@@ -51,6 +61,32 @@ def read_data()->pd.DataFrame:
     content.reset_index(drop = True, inplace = True)
     return topics, content
 
+class MeanPooling(nn.Module):
+    def __init__(self):
+        super(MeanPooling, self).__init__()
+    def forward(self, last_hidden_state, attention_mask):
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
+        sum_embeddings = torch.sum(last_hidden_state * input_mask_expanded, 1)
+        sum_mask = input_mask_expanded.sum(1)
+        sum_mask = torch.clamp(sum_mask, min=1e-9)
+        mean_embeddings = sum_embeddings / sum_mask
+        return mean_embeddings
+    
+class uns_model(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.config = AutoConfig.from_pretrained(unsupervised_model)
+        self.model = AutoModel.from_pretrained(unsupervised_model, config = self.config)
+        self.pool = MeanPooling()
+    def feature(self, inputs):
+        outputs = self.model(**inputs)
+        last_hidden_state = outputs.last_hidden_state
+        feature = self.pool(last_hidden_state, inputs['attention_mask'])
+        return feature
+    def forward(self, inputs):
+        feature = self.feature(inputs)
+        return feature
+    
 class uns_dataset(Dataset):
     """
     The goal of this class is to create 
@@ -133,7 +169,42 @@ class Transformer_model:
         
         return self.topics_loader, self.content_loader
         
+    def get_embeddings(self, loader, model, device):
+        model.eval()
+        preds = []
+        for step, inputs in enumerate(tqdm(loader)):
+            for k, v in inputs.items():
+                inputs[k] = v.to(device)
+            with torch.no_grad():
+                y_preds = model(inputs)
+            preds.append(y_preds.to('cpu').numpy())
+        preds = np.concatenate(preds)
+        return preds
+
+    def fit(self):
+        model = uns_model()
+        model.to(device)
+        self.topics_preds = np.array(self.get_embeddings(self.topics_loader, model, device))
+        self.content_preds = np.array(self.get_embeddings(self.content_loader, model, device))
+        self.neighbors_model = NearestNeighbors(n_neighbors = top_n, metric = 'cosine')
+        self.neighbors_model.fit(self.content_preds)
+
+    def predict(self):
+        indices = self.neighbors_model.kneighbors(self.topics_preds, return_distance = False)
+        predictions = []
+        for k in range(len(indices)):
+            pred = indices[k]
+            p = ' '.join([self.content.loc[ind, 'id'] for ind in pred.get()])
+            predictions.append(p)
+        self.topics['predictions'] = predictions
+        # Release memory
+        return self.topics, self.content 
+
 
 if __name__=="__main__":
     model=Transformer_model()
     model.get_loader()
+    model.fit()
+    a, b = model.predict()
+    a.to_csv("topics_pred.csv",index=False)
+    b.to_csv("content_pred.csv",index=False)
