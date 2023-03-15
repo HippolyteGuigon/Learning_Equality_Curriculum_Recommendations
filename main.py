@@ -17,6 +17,8 @@ chosen_model = main_params["chosen_model"]
 def launch_model():
     if chosen_model=="transformer_model":
         model=Transformer_model()
+        model.get_loader()
+        model.fit()
     else:
         model=Sentence_Bert_Model(sample_submission)
 

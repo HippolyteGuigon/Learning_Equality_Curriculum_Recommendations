@@ -170,6 +170,23 @@ class Transformer_model:
         return self.topics_loader, self.content_loader
         
     def get_embeddings(self, loader, model, device):
+        """
+        The goal of this function is to 
+        
+        Arguments: 
+            -loader: torch: The batches of data 
+            that will be passed through the model 
+            -model: torch: The model that will embedd
+            the different string sentences passed through
+            the model
+            -device: torch: The device on which the model 
+            will be run
+            
+        Returns: 
+            -preds: np.array: The predictions
+            made for the closest sentences given 
+            a certain input
+        """
         model.eval()
         preds = []
         for step, inputs in enumerate(tqdm(loader)):
@@ -182,6 +199,16 @@ class Transformer_model:
         return preds
 
     def fit(self):
+        """
+        The goal of this function is, once the embeddings
+        are produced, to fit a Nearest Neighbours model on 
+        it that will be able to detect the closest sentences
+        
+        Arguments: 
+            None 
+            
+        Returns:
+            None"""
         model = uns_model()
         model.to(device)
         self.topics_preds = np.array(self.get_embeddings(self.topics_loader, model, device))
@@ -190,16 +217,71 @@ class Transformer_model:
         self.neighbors_model.fit(self.content_preds)
 
     def predict(self):
+        """
+        The goal of this function is, once the 
+        model is fitted, to get the predictions, 
+        the content that are closest for a given 
+        input 
+        
+        Arguments: 
+            None
+            
+        Returns:
+            -self.topics: pd.DataFrame: The topics 
+            DataFrame with the closest topics
+            -self.content: """
         indices = self.neighbors_model.kneighbors(self.topics_preds, return_distance = False)
         predictions = []
         for k in range(len(indices)):
             pred = indices[k]
-            p = ' '.join([self.content.loc[ind, 'id'] for ind in pred.get()])
+            p = ' '.join([self.content.loc[ind, 'id'] for ind in pred])
             predictions.append(p)
         self.topics['predictions'] = predictions
         # Release memory
         return self.topics, self.content 
 
+    def build_inference_set(self, topics, content):
+        # Create lists for training
+        topics_ids = []
+        content_ids = []
+        topics_languages = []
+        content_languages = []
+        title1 = []
+        title2 = []
+        has_contents = []
+        # Iterate over each topic
+        for k in tqdm(range(len(topics))):
+            row = topics.iloc[k]
+            topics_id = row['id']
+            topics_language = row['language']
+            topics_title = row['title']
+            predictions = row['predictions'].split(' ')
+            has_content = row['has_content']
+            for pred in predictions:
+                content_title = content.loc[pred, 'title']
+                content_language = content.loc[pred, 'language']
+                topics_ids.append(topics_id)
+                content_ids.append(pred)
+                title1.append(topics_title)
+                title2.append(content_title)
+                topics_languages.append(topics_language)
+                content_languages.append(content_language)
+                has_contents.append(has_content)
+                
+        # Build training dataset
+        test = pd.DataFrame(
+            {'topics_ids': topics_ids, 
+            'content_ids': content_ids, 
+            'title1': title1, 
+            'title2': title2,
+            'topic_language': topics_languages, 
+            'content_language': content_languages,
+            'has_contents': has_contents,
+            }
+        )
+        # Release memory
+        
+        return test
 
 if __name__=="__main__":
     model=Transformer_model()
