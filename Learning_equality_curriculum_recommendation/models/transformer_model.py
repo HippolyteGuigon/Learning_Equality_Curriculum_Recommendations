@@ -22,11 +22,15 @@ tqdm.pandas()
 main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
 unsupervised_model = main_params["unsupervised_model"]
+supervised_model = main_params["supervised_model"]
+supervised_model_tuned = main_params["supervised_model_tuned"]
+gradient_checkpointing = main_params["gradient_checkpointing"]
 batch_size = main_params["batch_size"]
 num_workers=main_params["num_workers"]
 top_n = main_params["top_n"]
 
 unsupervised_tokenizer = AutoTokenizer.from_pretrained(unsupervised_model)
+supervised_tokenizer = AutoTokenizer.from_pretrained(supervised_model)
 
 def read_data()->pd.DataFrame:
     """
@@ -72,6 +76,50 @@ class MeanPooling(nn.Module):
         mean_embeddings = sum_embeddings / sum_mask
         return mean_embeddings
     
+
+class custom_model(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.config = AutoConfig.from_pretrained(supervised_model_tuned + '/config', output_hidden_states = True)
+        self.config.hidden_dropout = 0.0
+        self.config.hidden_dropout_prob = 0.0
+        self.config.attention_dropout = 0.0
+        self.config.attention_probs_dropout_prob = 0.0
+        self.model = AutoModel.from_pretrained(supervised_model_tuned + '/model', config = self.config)
+        #self.pool = MeanPooling()
+        if gradient_checkpointing:
+            self.model.gradient_checkpointing_enable()
+        self.pool = MeanPooling()
+        
+        #self.fc = nn.Linear(self.config.hidden_size, 1)
+        self._init_weights(self.fc)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.Embedding):
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
+            if module.padding_idx is not None:
+                module.weight.data[module.padding_idx].zero_()
+        elif isinstance(module, nn.LayerNorm):
+            module.bias.data.zero_()
+            module.weight.data.fill_(1.0)
+    def feature(self, inputs):
+        outputs = self.model(**inputs)
+        last_hidden_state = outputs.last_hidden_state
+        feature = self.pool(last_hidden_state, inputs['attention_mask'])
+        
+        #last_hidden_state = outputs.last_hidden_state
+        #feature = self.pool(last_hidden_state, inputs['attention_mask'])
+        return feature
+    
+    def forward(self, inputs):
+        feature = self.feature(inputs)
+        output = self.fc(feature)
+        return output
+
 class uns_model(nn.Module):
     def __init__(self):
         super().__init__()
@@ -115,8 +163,26 @@ class uns_dataset(Dataset):
     def __getitem__(self, item):
         inputs = unsupervised_tokenizer(self.texts[item])
         return inputs
-    
 
+def prepare_sup_input(text):
+    inputs = supervised_tokenizer.encode_plus(
+        text, 
+        return_tensors = None, 
+        add_special_tokens = True, 
+    )
+    for k, v in inputs.items():
+        inputs[k] = torch.tensor(v, dtype = torch.long)
+    return inputs
+
+class sup_dataset(Dataset):
+    def __init__(self, df):
+        self.texts = df['text'].values
+    def __len__(self):
+        return len(self.texts)
+    def __getitem__(self, item):
+        inputs = prepare_sup_input(self.texts[item])
+        return inputs
+    
 class Transformer_model:
     """
     The goal of this class is to implement 
@@ -250,6 +316,11 @@ class Transformer_model:
         title2 = []
         has_contents = []
         # Iterate over each topic
+        full_topics=pd.read_csv("data/topics.csv")
+        full_content=pd.read_csv("data/content.csv")
+        topics=topics.merge(full_topics[["id", "language", "has_content"]], on="id", how="left")
+        content=content.merge(full_content[["id", "language"]], on="id", how="left")
+        content.set_index("id",inplace=True)
         for k in tqdm(range(len(topics))):
             row = topics.iloc[k]
             topics_id = row['id']
@@ -279,14 +350,93 @@ class Transformer_model:
             'has_contents': has_contents,
             }
         )
-        # Release memory
         
         return test
+    
+    def preprocess_test(self, tmp_test):
+        tmp_test['title1'].fillna("Title does not exist", inplace = True)
+        tmp_test['title2'].fillna("Title does not exist", inplace = True)
+        # Create feature column
+        tmp_test['text'] = tmp_test['title1'] + '[SEP]' + tmp_test['title2']
+        # Drop titles
+        tmp_test.drop(['title1', 'title2'], axis = 1, inplace = True)
+        # Sort so inference is faster
+        tmp_test['length'] = tmp_test['text'].apply(lambda x: len(x))
+        tmp_test.sort_values('length', inplace = True)
+        tmp_test.drop(['length'], axis = 1, inplace = True)
+        tmp_test.reset_index(drop = True, inplace = True)
+        return tmp_test
+
+    def inference_fn(self, test_loader, model, device):
+        preds = []
+        model.eval()
+        model.to(device)
+        tk0 = tqdm(test_loader, total = len(test_loader))
+        for inputs in tk0:
+            for k, v in inputs.items():
+                inputs[k] = v.to(device)
+            with torch.no_grad():
+                y_preds = model(inputs)
+            preds.append(y_preds.sigmoid().squeeze().to('cpu').numpy().reshape(-1))
+        predictions = np.concatenate(preds)
+        return predictions
+
+    def inference(self, test, _idx):
+        # Create dataset and loader
+        test_dataset = sup_dataset(test)
+        test_loader = DataLoader(
+            test_dataset, 
+            batch_size = batch_size, 
+            shuffle = False, 
+            collate_fn = DataCollatorWithPadding(tokenizer = supervised_tokenizer, padding = 'longest'),
+            num_workers = 8,
+            pin_memory = True,
+            drop_last = False
+        )
+        # Get model
+        model = custom_model()
+        
+        # Load weights
+        state = torch.load(supervised_model_tuned, map_location = torch.device('cpu'))
+        model.load_state_dict(state['model'])
+        prediction = model.inference_fn(test_loader, model, device)
+                
+        # Use threshold
+        test['probs'] = prediction
+        test['predictions'] = test['probs'].apply(lambda x: int(x > 0.1))
+        #test['predictions'] = test['probs'].apply(lambda x: int(x > 0.001)) 
+        test = test.merge(test.groupby("topics_ids", as_index=False)["probs"].max(), on="topics_ids", suffixes=["", "_max"])
+        test = test[test['has_contents'] == True]
+        #display(test)
+        
+        test1 = test[(test['predictions'] == 1) & (test['topic_language'] == test['content_language'])]
+        test1 = test1.groupby(['topics_ids'])['content_ids'].unique().reset_index()
+        test1['content_ids'] = test1['content_ids'].apply(lambda x: ' '.join(x))
+        test1.columns = ['topic_id', 'content_ids']
+        #display(test1.head())
+        
+        test0 = pd.Series(test['topics_ids'].unique())
+        test0 = test0[~test0.isin(test1['topic_id'])]
+        test0 = pd.DataFrame({'topic_id': test0.values, 'content_ids': ""})
+        #display(test0.head())
+        test_r = pd.concat([test1, test0], axis = 0, ignore_index = True)
+        test_r.to_csv(f'submission_{_idx+1}.csv', index = False)
+        
+        return test_r
 
 if __name__=="__main__":
     model=Transformer_model()
-    model.get_loader()
-    model.fit()
-    a, b = model.predict()
-    a.to_csv("topics_pred.csv",index=False)
-    b.to_csv("content_pred.csv",index=False)
+    tmp_topics, tmp_content = pd.read_csv("topics_pred.csv"), pd.read_csv("content_pred.csv")
+    tmp_content.set_index('id', inplace = True)
+    tmp_test = model.build_inference_set(tmp_topics, tmp_content)
+    tmp_test = model.preprocess_test(tmp_test)
+    print("AT THIS STAGE 1")
+    model.inference(tmp_test, 1)
+    print("AT THIS STAGE 2")    
+    df_test = pd.read_csv('submission_1.csv')
+    df_test.fillna("", inplace = True)
+    df_test['content_ids'] = df_test['content_ids'].apply(lambda c: c.split(' '))
+    df_test = df_test.explode('content_ids').groupby(['topic_id'])['content_ids'].unique().reset_index()
+    df_test['content_ids'] = df_test['content_ids'].apply(lambda c: ' '.join(c))
+    df_test.to_csv('submission.csv', index = False)
+    df_test.head()

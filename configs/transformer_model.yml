@@ -1,4 +1,7 @@
 unsupervised_model: 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+supervised_model : 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+supervised_model_tuned : 'Learning_equality_curriculum_recommendation/models/all-MiniLM-L6-v2-exp_fold0_epochs10'
+gradient_checkpointing : False
 batch_size: 32
 n_folds: 5
 top_n: 50
