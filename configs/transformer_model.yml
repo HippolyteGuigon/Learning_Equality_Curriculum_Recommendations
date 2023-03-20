@@ -1,9 +1,14 @@
-unsupervised_model: 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
-supervised_model : 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
-supervised_model_tuned : 'Learning_equality_curriculum_recommendation/models/all-MiniLM-L6-v2-exp_fold0_epochs10'
+cfg_1_unsupervised_model: 'Learning_equality_curriculum_recommendation/models/model_source/all-MiniLM-L6-v2-exp_fold0_epochs10'
+cfg_1_supervised_model : 'Learning_equality_curriculum_recommendation/models/model_source/all-MiniLM-L6-v2-exp_fold0_epochs10'
+cfg_1_supervised_model_tuned : 'Learning_equality_curriculum_recommendation/models/model_source/sentence-transformers-all-MiniLM-L6-v2_fold0_42.pth'
+cfg_2_unsupervised_model : 'Learning_equality_curriculum_recommendation/models/model_source/stage-1-paraphrase-multilingual-mpnet-base-v2-tuned-4747'
+cfg_2_supervised_model : "Learning_equality_curriculum_recommendation/models/model_source/paraphrasemultilingualmpnetbasev2-origin"
+cfg_2_supervised_model_tuned : "Learning_equality_curriculum_recommendation/models/model_source/model-paraphrase-multilingual-mpnet-base-v2-tuned_0.4747.pth"
 gradient_checkpointing : False
+add_with_best_prob : True
 batch_size: 32
 n_folds: 5
 top_n: 50
 threshold: 0.06
 num_workers: 4
+pooling: "mean"

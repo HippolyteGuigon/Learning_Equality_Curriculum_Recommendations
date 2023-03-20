@@ -15,19 +15,48 @@ from Learning_equality_curriculum_recommendation.configs.confs import (
     Loader,
 )
 
-os.environ["TOKENIZERS_PARALLELISM"]="False"
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-tqdm.pandas()
-
 main_params = load_conf("configs/main.yml", include=True)
 main_params = clean_params(main_params)
-unsupervised_model = main_params["unsupervised_model"]
-supervised_model = main_params["supervised_model"]
-supervised_model_tuned = main_params["supervised_model_tuned"]
 gradient_checkpointing = main_params["gradient_checkpointing"]
 batch_size = main_params["batch_size"]
 num_workers=main_params["num_workers"]
 top_n = main_params["top_n"]
+pooling = main_params["pooling"]
+add_with_best_prob = main_params["add_with_best_prob"]
+cfg_1_unsupervised_model = main_params["cfg_1_unsupervised_model"]
+cfg_1_supervised_model = main_params["cfg_1_supervised_model"]
+cfg_1_supervised_model_tuned = main_params["cfg_1_supervised_model_tuned"]
+cfg_2_unsupervised_model = main_params["cfg_2_unsupervised_model"]
+cfg_2_supervised_model = main_params["cfg_2_supervised_model"]
+cfg_2_supervised_model_tuned = main_params["cfg_2_supervised_model_tuned"]
+
+os.environ["TOKENIZERS_PARALLELISM"]="False"
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+tqdm.pandas()
+
+class CFG1:
+    uns_model = cfg_1_unsupervised_model
+    sup_model = cfg_1_supervised_model
+    sup_model_tuned = cfg_1_supervised_model_tuned
+    uns_tokenizer = AutoTokenizer.from_pretrained(uns_model + '/tokenizer')
+    sup_tokenizer = AutoTokenizer.from_pretrained(sup_model + '/tokenizer')
+    pooling = pooling
+    batch_size = batch_size
+    gradient_checkpointing = gradient_checkpointing
+    add_with_best_prob = add_with_best_prob
+    
+class CFG2:
+    uns_model = cfg_2_unsupervised_model
+    sup_model = cfg_2_supervised_model
+    sup_model_tuned = cfg_2_supervised_model_tuned
+    uns_tokenizer = AutoTokenizer.from_pretrained(uns_model + '/tokenizer')
+    sup_tokenizer = AutoTokenizer.from_pretrained(sup_model + '/tokenizer')
+    pooling = pooling
+    batch_size = batch_size
+    gradient_checkpointing = gradient_checkpointing
+    add_with_best_prob = add_with_best_prob  
+
+CFG_list = [CFG1, CFG2]
 
 unsupervised_tokenizer = AutoTokenizer.from_pretrained(unsupervised_model)
 supervised_tokenizer = AutoTokenizer.from_pretrained(supervised_model)
@@ -78,20 +107,18 @@ class MeanPooling(nn.Module):
     
 
 class custom_model(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
-        self.config = AutoConfig.from_pretrained(supervised_model_tuned + '/config', output_hidden_states = True)
+        self.config = AutoConfig.from_pretrained(cfg.sup_model + '/config', output_hidden_states = True)
         self.config.hidden_dropout = 0.0
         self.config.hidden_dropout_prob = 0.0
         self.config.attention_dropout = 0.0
         self.config.attention_probs_dropout_prob = 0.0
-        self.model = AutoModel.from_pretrained(supervised_model_tuned + '/model', config = self.config)
-        #self.pool = MeanPooling()
+        self.model = AutoModel.from_pretrained(cfg.sup_model + '/model', config = self.config)
         if gradient_checkpointing:
             self.model.gradient_checkpointing_enable()
         self.pool = MeanPooling()
-        
-        #self.fc = nn.Linear(self.config.hidden_size, 1)
+        self.fc = nn.Linear(self.config.hidden_size, 1)
         self._init_weights(self.fc)
 
     def _init_weights(self, module):
@@ -121,10 +148,11 @@ class custom_model(nn.Module):
         return output
 
 class uns_model(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
-        self.config = AutoConfig.from_pretrained(unsupervised_model)
-        self.model = AutoModel.from_pretrained(unsupervised_model, config = self.config)
+        self.cfg = cfg
+        self.config = AutoConfig.from_pretrained(cfg.uns_model + '/config')
+        self.model = AutoModel.from_pretrained(cfg.uns_model + '/model', config = self.config)
         self.pool = MeanPooling()
     def feature(self, inputs):
         outputs = self.model(**inputs)
@@ -134,7 +162,17 @@ class uns_model(nn.Module):
     def forward(self, inputs):
         feature = self.feature(inputs)
         return feature
-    
+
+def prepare_uns_input(text, cfg):
+        inputs = cfg.uns_tokenizer.encode_plus(
+            text, 
+            return_tensors = None, 
+            add_special_tokens = True, 
+        )
+        for k, v in inputs.items():
+            inputs[k] = torch.tensor(v, dtype = torch.long)
+        return inputs
+
 class uns_dataset(Dataset):
     """
     The goal of this class is to create 
@@ -146,26 +184,17 @@ class uns_dataset(Dataset):
         which the unsupervised dataset will be 
         created
     """
-    def __init__(self, df: pd.DataFrame)->None:
+    def __init__(self, df: pd.DataFrame, cfg)->None:
+        self.cfg = cfg
         self.texts = df['title'].values
-
-    def prepare_uns_input(text):
-        inputs = unsupervised_tokenizer.encode_plus(
-            text, 
-            return_tensors = None, 
-            add_special_tokens = True, 
-        )
-        for k, v in inputs.items():
-            inputs[k] = torch.tensor(v, dtype = torch.long)
-        return inputs
     def __len__(self):
         return len(self.texts)
     def __getitem__(self, item):
-        inputs = unsupervised_tokenizer(self.texts[item])
+        inputs = unsupervised_tokenizer(self.texts[item], self.cfg)
         return inputs
 
-def prepare_sup_input(text):
-    inputs = supervised_tokenizer.encode_plus(
+def prepare_sup_input(text, cfg):
+    inputs =  cfg.sup_tokenizer.encode_plus(
         text, 
         return_tensors = None, 
         add_special_tokens = True, 
@@ -175,12 +204,13 @@ def prepare_sup_input(text):
     return inputs
 
 class sup_dataset(Dataset):
-    def __init__(self, df):
+    def __init__(self, df, cfg):
+        self.cfg = cfg
         self.texts = df['text'].values
     def __len__(self):
         return len(self.texts)
     def __getitem__(self, item):
-        inputs = prepare_sup_input(self.texts[item])
+        inputs = prepare_sup_input(self.texts[item], self.cfg)
         return inputs
     
 class Transformer_model:
@@ -196,7 +226,7 @@ class Transformer_model:
     def __init__(self):
         self.topics, self.content = read_data()
 
-    def get_loader(self)->torch:
+    def get_loader(self, cfg)->torch:
         """
         The goal of this function is to create 
         Loaders set that will pass through the 
@@ -211,23 +241,23 @@ class Transformer_model:
             -self.content_loader: torch: The DataLoader
             of the content dataset
         """
-        topics_dataset = uns_dataset(self.topics)
-        content_dataset = uns_dataset(self.content)
+        topics_dataset = uns_dataset(self.topics, cfg)
+        content_dataset = uns_dataset(self.content, cfg)
 
         self.topics_loader = DataLoader(
         topics_dataset, 
-        batch_size = batch_size, 
+        batch_size = cfg.batch_size, 
         shuffle = False, 
-        collate_fn = DataCollatorWithPadding(tokenizer = unsupervised_tokenizer, padding = 'longest'),
+        collate_fn = DataCollatorWithPadding(tokenizer = cfg.uns_tokenizer, padding = 'longest'),
         num_workers = num_workers, 
         pin_memory = True, 
         drop_last = False
     )
         self.content_loader = DataLoader(
             content_dataset, 
-            batch_size = batch_size, 
+            batch_size = cfg.batch_size, 
             shuffle = False, 
-            collate_fn = DataCollatorWithPadding(tokenizer = unsupervised_tokenizer, padding = 'longest'),
+            collate_fn = DataCollatorWithPadding(tokenizer = cfg.uns_tokenizer, padding = 'longest'),
             num_workers = num_workers, 
             pin_memory = True, 
             drop_last = False
@@ -255,7 +285,7 @@ class Transformer_model:
         """
         model.eval()
         preds = []
-        for step, inputs in enumerate(tqdm(loader)):
+        for step, inputs in enumerate(tqdm(loader)):        
             for k, v in inputs.items():
                 inputs[k] = v.to(device)
             with torch.no_grad():
@@ -264,7 +294,7 @@ class Transformer_model:
         preds = np.concatenate(preds)
         return preds
 
-    def fit(self):
+    def fit(self, cfg):
         """
         The goal of this function is, once the embeddings
         are produced, to fit a Nearest Neighbours model on 
@@ -275,7 +305,7 @@ class Transformer_model:
             
         Returns:
             None"""
-        model = uns_model()
+        model = uns_model(cfg)
         model.to(device)
         self.topics_preds = np.array(self.get_embeddings(self.topics_loader, model, device))
         self.content_preds = np.array(self.get_embeddings(self.content_loader, model, device))
@@ -371,6 +401,9 @@ class Transformer_model:
         preds = []
         model.eval()
         model.to(device)
+        first_parameter = next(model.parameters())
+        input_shape = first_parameter.size()
+        print("MODEL INPUT SHAPE", input_shape)
         tk0 = tqdm(test_loader, total = len(test_loader))
         for inputs in tk0:
             for k, v in inputs.items():
@@ -381,44 +414,38 @@ class Transformer_model:
         predictions = np.concatenate(preds)
         return predictions
 
-    def inference(self, test, _idx):
+    def inference(self, test, cfg, _idx):
         # Create dataset and loader
-        test_dataset = sup_dataset(test)
+        test_dataset = sup_dataset(test, cfg)
         test_loader = DataLoader(
             test_dataset, 
-            batch_size = batch_size, 
+            batch_size = cfg.batch_size, 
             shuffle = False, 
-            collate_fn = DataCollatorWithPadding(tokenizer = supervised_tokenizer, padding = 'longest'),
+            collate_fn = DataCollatorWithPadding(tokenizer = cfg.sup_tokenizer, padding = 'longest'),
             num_workers = 8,
             pin_memory = True,
             drop_last = False
         )
         # Get model
-        model = custom_model()
+        model = custom_model(cfg)
         
         # Load weights
-        state = torch.load(supervised_model_tuned, map_location = torch.device('cpu'))
+        state = torch.load(cfg.sup_model_tuned, map_location = torch.device('cpu'))
         model.load_state_dict(state['model'])
-        prediction = model.inference_fn(test_loader, model, device)
+        prediction = self.inference_fn(test_loader, model, device)
                 
         # Use threshold
         test['probs'] = prediction
         test['predictions'] = test['probs'].apply(lambda x: int(x > 0.1))
-        #test['predictions'] = test['probs'].apply(lambda x: int(x > 0.001)) 
         test = test.merge(test.groupby("topics_ids", as_index=False)["probs"].max(), on="topics_ids", suffixes=["", "_max"])
-        test = test[test['has_contents'] == True]
-        #display(test)
-        
+        test = test[test['has_contents'] == True]        
         test1 = test[(test['predictions'] == 1) & (test['topic_language'] == test['content_language'])]
         test1 = test1.groupby(['topics_ids'])['content_ids'].unique().reset_index()
         test1['content_ids'] = test1['content_ids'].apply(lambda x: ' '.join(x))
         test1.columns = ['topic_id', 'content_ids']
-        #display(test1.head())
-        
         test0 = pd.Series(test['topics_ids'].unique())
         test0 = test0[~test0.isin(test1['topic_id'])]
         test0 = pd.DataFrame({'topic_id': test0.values, 'content_ids': ""})
-        #display(test0.head())
         test_r = pd.concat([test1, test0], axis = 0, ignore_index = True)
         test_r.to_csv(f'submission_{_idx+1}.csv', index = False)
         
@@ -426,17 +453,24 @@ class Transformer_model:
 
 if __name__=="__main__":
     model=Transformer_model()
-    tmp_topics, tmp_content = pd.read_csv("topics_pred.csv"), pd.read_csv("content_pred.csv")
-    tmp_content.set_index('id', inplace = True)
-    tmp_test = model.build_inference_set(tmp_topics, tmp_content)
-    tmp_test = model.preprocess_test(tmp_test)
-    print("AT THIS STAGE 1")
-    model.inference(tmp_test, 1)
-    print("AT THIS STAGE 2")    
-    df_test = pd.read_csv('submission_1.csv')
-    df_test.fillna("", inplace = True)
-    df_test['content_ids'] = df_test['content_ids'].apply(lambda c: c.split(' '))
-    df_test = df_test.explode('content_ids').groupby(['topic_id'])['content_ids'].unique().reset_index()
-    df_test['content_ids'] = df_test['content_ids'].apply(lambda c: ' '.join(c))
-    df_test.to_csv('submission.csv', index = False)
-    df_test.head()
+    for _idx, CFG in enumerate(CFG_list):
+        # Read data
+        tmp_topics, tmp_content = read_data()
+        # Run nearest neighbors
+        tmp_topics, tmp_content = model.get_neighbors(tmp_topics, tmp_content, CFG)
+        # Set id as index for content
+        tmp_content.set_index('id', inplace = True)
+        # Build training set
+        tmp_test = model.build_inference_set(tmp_topics, tmp_content, CFG)
+        # Process test set
+        tmp_test = model.preprocess_test(tmp_test)
+        # Inference
+        model.inference(tmp_test, CFG, _idx)
+
+df_test = pd.concat([pd.read_csv(f'submission_{_idx + 1}.csv') for _idx in range(len(CFG_list))])
+df_test.fillna("", inplace = True)
+df_test['content_ids'] = df_test['content_ids'].apply(lambda c: c.split(' '))
+df_test = df_test.explode('content_ids').groupby(['topic_id'])['content_ids'].unique().reset_index()
+df_test['content_ids'] = df_test['content_ids'].apply(lambda c: ' '.join(c))
+
+df_test.to_csv('submission.csv', index = False)
